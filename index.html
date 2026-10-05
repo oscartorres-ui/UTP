@@ -72,6 +72,13 @@
     #reporteContenido table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.85rem; }
     #reporteContenido th, #reporteContenido td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
     #reporteContenido th { background-color: #f7fafc; color: #2d3748; }
+
+    #cartaPDF {
+      background:#fff; color:#1e293b; width:100%; max-width:800px; margin:0 auto;
+      padding:48px 52px; line-height:1.65; font-family:'Segoe UI',system-ui,sans-serif;
+    }
+    #cartaPDF h1, #cartaPDF h2, #cartaPDF h3 { color:#6b21a8; }
+    #cartaPDF .firma { margin-top:42px; font-weight:700; }
   </style>
 </head>
 <body>
@@ -126,6 +133,11 @@
       </button>
     </div>
     <div id="reporteContenido"></div>
+
+    <div id="cartaSection" style="display:none; margin-top:28px; padding-top:20px; border-top:2px solid #e2e8f0;">
+      <div style="font-weight:700;color:#6b21a8;margin-bottom:10px;">Carta de retroalimentación formativa</div>
+      <button class="btn-download" onclick="descargarCartaPDF()">📄 Descargar Carta de Retroalimentación PDF</button>
+    </div>
   </div>
 </div>
 
@@ -180,7 +192,58 @@
     html2pdf().set(opciones).from(elemento).save();
   }
 
-  const SYSTEM_INSTRUCTIONS = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar evaluaciones escritas cruzándolas con su correspondiente Tabla de Especificaciones y generar un informe de revisión técnica para la UTP del Colegio Isabel Riquelme, junto con una carta de retroalimentación formativa para el docente.
+  let cartaRetroalimentacion = '';
+
+  function extraerCarta(texto) {
+    const inicio = texto.indexOf('[CARTA_RETROALIMENTACION]');
+    const fin = texto.indexOf('[/CARTA_RETROALIMENTACION]');
+    if (inicio === -1 || fin === -1 || fin <= inicio) return '';
+    return texto
+      .slice(inicio + '[CARTA_RETROALIMENTACION]'.length, fin)
+      .trim();
+  }
+
+  function prepararCarta(textoCarta) {
+    if (!textoCarta) return '';
+    let md = textoCarta
+      .replace(/\*\*Equipo CIR\*\*/gi, '')
+      .replace(/Asesoría Pedagógica Experta en Evaluación/gi, 'Equipo CIR')
+      .trim();
+
+    // Garantiza que la firma institucional sea Equipo CIR.
+    md = md.replace(/\s*(Atentamente|Saludos cordiales|Cordialmente)?\s*$/i, '').trim();
+    return md + '\n\n**Equipo CIR**';
+  }
+
+  function descargarCartaPDF() {
+    if (!cartaRetroalimentacion) return;
+
+    const contenedor = document.createElement('div');
+    contenedor.id = 'cartaPDF';
+    contenedor.innerHTML = `
+      <h1 style="text-align:center;margin-top:0;">Carta de Retroalimentación Formativa</h1>
+      <div>${window.marked ? marked.parse(cartaRetroalimentacion) : cartaRetroalimentacion.replace(/\n/g, '<br>')}</div>
+      <div class="firma">Equipo CIR</div>
+    `;
+
+    document.body.appendChild(contenedor);
+    const opciones = {
+      margin: [12, 14, 12, 14],
+      filename: 'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    html2pdf().set(opciones).from(contenedor).save().finally(() => contenedor.remove());
+  }
+
+  const SYSTEM_INSTRUCTIONS = `Eres un especialista en evaluación educativa al servicio del Equipo CIR del Colegio Isabel Riquelme. Tu función es auditar evaluaciones escritas cruzándolas con su correspondiente Tabla de Especificaciones y generar un informe de revisión técnica para la UTP del Colegio Isabel Riquelme, junto con una carta de retroalimentación formativa para el docente.
+
+IMPORTANTE: Nunca firmes ni menciones como firma institucional “Asesoría Pedagógica Experta en Evaluación”. La carta debe finalizar exclusivamente con “Equipo CIR”.
+
+FORMATO OBLIGATORIO DE LA CARTA: Al final de tu respuesta debes incluir una sección delimitada exactamente entre [CARTA_RETROALIMENTACION] y [/CARTA_RETROALIMENTACION]. Dentro de esa sección redacta solamente la carta dirigida al docente, con tono profesional, respetuoso, formativo y concreto. No incluyas análisis técnico fuera de la carta dentro de esos delimitadores. La carta debe cerrar con “Equipo CIR”.
 
 REGLAS INSTITUCIONALES OBLIGATORIAS:
 1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: Las evaluaciones pueden incluir como MÁXIMO 3 Objetivos de Aprendizaje (OA).
@@ -319,13 +382,21 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
         throw new Error('Gemini respondió sin contenido de texto. Revisa la clave API, el modelo y los archivos PDF.');
       }
 
+      cartaRetroalimentacion = prepararCarta(extraerCarta(textoResultado));
+
+      // Oculta los delimitadores y la carta del informe técnico principal.
+      const informeTecnico = textoResultado
+        .replace(/\[CARTA_RETROALIMENTACION\][\s\S]*?\[\/CARTA_RETROALIMENTACION\]/gi, '')
+        .trim();
+
       if (window.marked) {
         // marked se usa solo para transformar Markdown generado por Gemini.
-        document.getElementById('reporteContenido').innerHTML = marked.parse(textoResultado);
+        document.getElementById('reporteContenido').innerHTML = marked.parse(informeTecnico);
       } else {
-        document.getElementById('reporteContenido').innerText = textoResultado;
+        document.getElementById('reporteContenido').innerText = informeTecnico;
       }
 
+      document.getElementById('cartaSection').style.display = cartaRetroalimentacion ? 'block' : 'none';
       document.getElementById('results').style.display = 'block';
 
     } catch (err) {
