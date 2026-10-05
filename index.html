@@ -22,7 +22,7 @@
     }
     * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px 15px; }
-    .card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); max-width: 820px; margin: 0 auto; }
+    .card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); max-width: 850px; margin: 0 auto; }
     
     .header-title { text-align: center; margin-bottom: 20px; }
     .header-title h2 { color: var(--primary); margin: 0 0 6px 0; }
@@ -55,7 +55,7 @@
     
     #errorBox { display: none; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 14px 16px; border-radius: 10px; margin-bottom: 15px; font-size: 0.88rem; word-break: break-word; line-height: 1.4; white-space: pre-wrap; }
     
-    #statusBox { display: none; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 14px; border-radius: 10px; margin-bottom: 15px; font-size: 0.85rem; font-family: monospace; line-height: 1.5; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
+    #statusBox { display: none; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 14px; border-radius: 10px; margin-bottom: 15px; font-size: 0.85rem; font-family: monospace; line-height: 1.5; white-space: pre-wrap; }
 
     #loader { display: none; text-align: center; padding: 20px; font-weight: 600; color: #6b21a8; }
     .spinner { display: inline-block; width: 22px; height: 22px; border: 3px solid #e9d5ff; border-top-color: #6b21a8; border-radius: 50%; animation: spin 1s linear infinite; vertical-align: middle; margin-right: 8px; }
@@ -63,12 +63,9 @@
     
     #results { margin-top: 25px; display: none; background: #ffffff; padding: 24px; border-radius: 12px; border-top: 4px solid var(--accent); }
     
-    .action-bar { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; }
-    .btn-download { border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: white; }
-    .btn-download.report { background: #16a34a; }
-    .btn-download.report:hover { background: #15803d; }
-    .btn-download.letter { background: #0284c7; }
-    .btn-download.letter:hover { background: #0369a1; }
+    .action-bar { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+    .btn-download { background: #16a34a; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+    .btn-download:hover { background: #15803d; }
     
     #reporteContenido { line-height: 1.6; color: #1e293b; }
     #reporteContenido h1, #reporteContenido h2, #reporteContenido h3 { color: #6b21a8; margin-top: 20px; }
@@ -81,8 +78,8 @@
 
 <div class="card">
   <div class="header-title">
-    <h2>Prepara tu auditoría</h2>
-    <p>Carga los documentos requeridos y obtén un informe técnico-pedagógico para el Colegio Isabel Riquelme.</p>
+    <h2>Auditor Pedagógico UTP</h2>
+    <p>Colegio Particular Subvencionado Isabel Riquelme (La Serena)</p>
   </div>
 
   <div class="input-group">
@@ -91,21 +88,18 @@
       <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de Google AI Studio">
       <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility()">👁</button>
     </div>
-    <div class="sub" style="margin-top:8px;color:#64748b;">
-      La clave se utiliza solo desde tu navegador. Para producción, usa una API Key restringida al dominio de GitHub Pages.
-    </div>
   </div>
 
   <div class="grid-files">
     <div class="file-box">
-      <label>Tabla de Especificaciones</label>
-      <div class="sub">Selecciona el PDF con objetivos, habilidades e ítems.</div>
+      <label>1. Tabla de Especificaciones</label>
+      <div class="sub">PDF con la matriz de especificaciones entregada por el docente.</div>
       <input type="file" id="tablaPdf" accept="application/pdf">
     </div>
 
     <div class="file-box">
-      <label>Evaluación o Prueba</label>
-      <div class="sub">Selecciona el PDF de la prueba que deseas revisar.</div>
+      <label>2. Evaluación o Prueba</label>
+      <div class="sub">PDF del instrumento de evaluación del estudiante.</div>
       <input type="file" id="pruebaPdf" accept="application/pdf">
     </div>
   </div>
@@ -124,11 +118,8 @@
 
   <div id="results">
     <div class="action-bar">
-      <button class="btn-download report" onclick="descargarInformePDF()">
-        📥 Descargar Informe Técnico-Pedagógico PDF
-      </button>
-      <button class="btn-download letter" onclick="descargarCartaPDF()">
-        📄 Descargar Carta de Retroalimentación PDF
+      <button class="btn-download" onclick="descargarInformePDF()">
+        📥 Descargar Informe PDF
       </button>
     </div>
     <div id="reporteContenido"></div>
@@ -136,15 +127,6 @@
 </div>
 
 <script>
-  // ============================================================
-  // VARIABLES GLOBALES
-  // ============================================================
-  let reporteContenido = '';
-  let cartaContenido = '';
-
-  // ============================================================
-  // UTILIDADES DE UI
-  // ============================================================
   function togglePasswordVisibility() {
     const input = document.getElementById('apiKey');
     input.type = input.type === 'password' ? 'text' : 'password';
@@ -154,22 +136,8 @@
     const statusBox = document.getElementById('statusBox');
     statusBox.style.display = 'block';
     statusBox.innerText += msg + '\n';
-    statusBox.scrollTop = statusBox.scrollHeight;
   }
 
-  function mostrarError(msg) {
-    const errorBox = document.getElementById('errorBox');
-    errorBox.innerText = '❌ ' + msg;
-    errorBox.style.display = 'block';
-  }
-
-  function ocultarError() {
-    document.getElementById('errorBox').style.display = 'none';
-  }
-
-  // ============================================================
-  // CONVERSIÓN DE ARCHIVOS A BASE64
-  // ============================================================
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       if (!file) {
@@ -194,122 +162,87 @@
     });
   }
 
-  // ============================================================
-  // INSTRUCCIONES DEL SISTEMA (PROMPT)
-  // ============================================================
-  const SYSTEM_INSTRUCTIONS = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar evaluaciones escritas cruzándolas con su correspondiente Tabla de Especificaciones y generar un informe de revisión técnica para la UTP del Colegio Isabel Riquelme, junto con una carta de retroalimentación formativa para el docente.
+  function descargarInformePDF() {
+    const elemento = document.getElementById('reporteContenido');
+    if (!elemento || !elemento.innerText.trim()) return;
 
-REGLAS INSTITUCIONALES OBLIGATORIAS:
-1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: Las evaluaciones pueden incluir como MÁXIMO 3 Objetivos de Aprendizaje (OA).
-2. REQUISITO DE HABILIDADES: Las evaluaciones deben incluir OBLIGATORIAMENTE 3 HABILIDADES declaradas y evaluadas en el instrumento.
+    const opciones = {
+      margin:       [12, 12, 12, 12],
+      filename:     'Informe_Auditoria_Pedagogica_UTP.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
 
-INSTRUCCIONES DE FORMATO OBLIGATORIO:
-Debes generar DOS bloques independientes usando EXACTAMENTE estos marcadores:
+    html2pdf().set(opciones).from(elemento).save();
+  }
 
-===INFORME_TECNICO===
-[INFORME COMPLETO]
-===FIN_INFORME_TECNICO===
+  // PAUTA INSTITUCIONAL Y SYSTEM INSTRUCTIONS
+  const SYSTEM_INSTRUCTIONS = `Eres un Asesor Pedagógico Experto y Auditor Técnico de la UTP del Colegio Particular Subvencionado Isabel Riquelme (La Serena), guiado por el Marco para la Buena Enseñanza (MBE / MINEDUC de Chile).
 
-===CARTA_RETROALIMENTACION===
-[CARTA COMPLETA]
-Atentamente,
+Tu tarea es auditar técnicamente la Evaluación y la Tabla de Especificaciones adjuntas, verificando si cumplen estricta y fielmente con la PAUTA INSTITUCIONAL DE EVALUACIÓN DEL COLEGIO ISABEL RIQUELME.
 
-Equipo CIR
-===FIN_CARTA_RETROALIMENTACION===
+--- PAUTA TÉCNICA E INSTITUCIONAL DE EVALUACIÓN (CRITERIOS DE AUDITORÍA) ---
 
-REQUISITOS DEL INFORME:
-El informe debe contener:
-1. Identificación de la evaluación
-2. Síntesis ejecutiva
-3. Análisis de la Tabla de Especificaciones
-4. Coherencia OA – Habilidades – Ítems
-5. Auditoría ítem por ítem (analiza TODOS los ítems)
-6. Análisis de aprendizaje profundo
-7. Preguntas de interpretación detectadas
-8. Preguntas de comparación detectadas
-9. Preguntas de justificación y argumentación
-10. Uso de evidencia
-11. Preguntas superficiales
-12. Reformulación de preguntas
-13. Auditoría de metacognición
-14. Preguntas metacognitivas sugeridas
-15. Distribución de habilidades cognitivas
-16. Fortalezas
-17. Aspectos críticos
-18. Recomendaciones UTP
-19. Conclusión técnica
+1. COBERTURA Y REQUISITOS GENERALES:
+   - Objetivos de Aprendizaje (OA): Máximo 3 Objetivos de Aprendizaje evaluados en el instrumento.
+   - Habilidades Evaluadas: Obligatoriamente 3 niveles de habilidad declarados y evaluados.
 
-Para CADA ítem determina:
-- OA
-- habilidad declarada
-- habilidad realmente movilizada
-- contenido
-- demanda cognitiva
-- uso de evidencia
-- nivel de aprendizaje profundo
-- presencia de metacognición
-- coherencia con la Tabla de Especificaciones
-- problema detectado
-- recomendación
+2. GRADUACIÓN COGNITIVA Y DISTRIBUCIÓN DE PONDERACIÓN:
+   - Nivel I (Conocer / Recordar - Habilidad Básica): Representa aprox. el 25% del puntaje (Preguntas de 1 punto).
+   - Nivel II (Comprender / Aplicar - Habilidad Intermedia): Representa aprox. el 25% del puntaje (Preguntas de 1 punto).
+   - Nivel III (Analizar / Evaluar - Habilidad Avanzada): Representa aprox. el 50% del puntaje (Preguntas o ítems complejos de 2 puntos).
 
-Clasifica cada ítem con semáforo:
-🟢 Alta profundidad
-🟡 Profundidad intermedia
-🔴 Baja profundidad
-🧠 Metacognitivo (cuando corresponda)
+3. ESTRUCTURA DE ÍTEMS Y FORMATO INSTITUCIONAL:
+   - Preguntas de Selección Múltiple: Deben contar con exactamente 3 alternativas (a, b, c) para mantener homogeneidad y evitar sobrecarga cognitiva.
+   - Preguntas de Desarrollo Corto: Deben ser abiertas, enfocadas en habilidades superiores (Analizar/Evaluar) e incluir suficiente espacio de respuesta.
+   - Rúbrica Analítica para Desarrollo: Las preguntas abiertas deben contar con una Rúbrica Analítica explícita con niveles de Logrado (2 pts), Medianamente Logrado (1 pt) y No Logrado (0 pts).
 
-REQUISITOS DE LA CARTA:
-La carta debe ser:
-- profesional
-- respetuosa
-- formativa
-- concreta
-- no sancionatoria
-- orientada a la mejora
-Debe reconocer fortalezas y señalar oportunidades de mejora.
-Debe incluir recomendaciones relacionadas con:
-- aprendizaje profundo
-- interpretación
-- comparación
-- justificación
-- evidencia
-- metacognición
+4. CONCORDANCIA Y COHERENCIA INTERNA:
+   - Correspondencia Exacta: El número de ítems, tipo de pregunta, habilidad, indicador de logro y puntaje asignado en la Prueba deben coincidir al 100% con lo registrado en la Tabla de Especificaciones.
+   - Redacción de Indicadores: Los indicadores de logro deben redactarse con verbos observables y precisos.
 
-La firma DEBE ser exactamente: Equipo CIR
-Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógica Experta en Evaluación", "Equipo de Asesoría".`;
+--- ESTRUCTURA OBLIGATORIA DEL INFORME DE AUDITORÍA A GENERAR ---
 
-  // ============================================================
-  // FUNCIÓN PRINCIPAL DE AUDITORÍA
-  // ============================================================
+1. DICTAMEN DE AUDITORÍA: Declarar claramente si el instrumento está "APROBADO", "APROBADO CON OBSERVACIONES" o "RECHAZADO PARA CORRECCIÓN".
+2. TABLA DE CUMPLIMIENTO INSTITUCIONAL:
+   - Evaluar con (Cumple / Cumple Parcialmente / No Cumple) los puntos:
+     a) Límite de 3 OA.
+     b) Presencia de 3 Habilidades.
+     c) Balance Cognitivo 25% / 25% / 50%.
+     d) Preguntas con 3 alternativas (a, b, c).
+     e) Inclusión de Rúbrica Analítica para Desarrollo.
+     f) Concordancia 100% Prueba vs. Tabla de Especificaciones.
+3. ANÁLISIS DETALLADO DE OBSERVACIONES TÉCNICAS.
+4. CARTA FORMATIVA DE RETROALIMENTACIÓN PARA EL DOCENTE (Redactada con tono constructivo, profesional y orientador).`;
+
   async function ejecutarAuditoria() {
     const apiKey = document.getElementById('apiKey').value.trim();
     const tablaFile = document.getElementById('tablaPdf').files[0];
     const pruebaFile = document.getElementById('pruebaPdf').files[0];
+    const errorBox = document.getElementById('errorBox');
     const statusBox = document.getElementById('statusBox');
     const loaderText = document.getElementById('loaderText');
 
-    ocultarError();
+    errorBox.style.display = 'none';
     statusBox.style.display = 'none';
     statusBox.innerText = '';
-    reporteContenido = '';
-    cartaContenido = '';
 
-    // Validaciones
     if (!apiKey) {
-      mostrarError('Debes ingresar tu Clave API de Gemini.');
+      errorBox.innerText = '⚠️ Debes ingresar tu Clave API de Gemini.';
+      errorBox.style.display = 'block';
       return;
     }
+
     if (!tablaFile || !pruebaFile) {
-      mostrarError('Debes seleccionar ambos archivos PDF (Tabla de Especificaciones y Evaluación).');
+      errorBox.innerText = '⚠️ Debes seleccionar ambos archivos PDF (Tabla de Especificaciones y Evaluación).';
+      errorBox.style.display = 'block';
       return;
     }
-    if (tablaFile.type !== 'application/pdf' || pruebaFile.type !== 'application/pdf') {
-      mostrarError('Ambos archivos deben ser PDF válidos.');
-      return;
-    }
-    const totalSize = tablaFile.size + pruebaFile.size;
-    if (totalSize > 19 * 1024 * 1024) {
-      mostrarError('Los archivos PDF superan los 19 MB combinados. La API de Gemini permite un máximo de 20 MB por solicitud.');
+
+    if (tablaFile.size > 15 * 1024 * 1024 || pruebaFile.size > 15 * 1024 * 1024) {
+      errorBox.innerText = '⚠️ Uno de los archivos PDF supera los 15MB. Utiliza archivos de menor peso.';
+      errorBox.style.display = 'block';
       return;
     }
 
@@ -326,304 +259,78 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       loaderText.innerText = 'Leyendo Evaluación...';
       const pruebaB64 = await fileToBase64(pruebaFile);
 
-      logStatus('[3/4] Conectando con los servidores de Google Gemini...');
+      logStatus('[3/4] Conectando con la API de Gemini...');
 
-      // Modelos actuales de la API de Gemini (verificados en documentación oficial)
-      const modelos = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
+      const modelos = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
       let data = null;
       let erroresAcumulados = [];
 
-      // ============================================================
-      // UTILIDAD: esperar ms milisegundos
-      // ============================================================
-      const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-      // ============================================================
-      // UTILIDAD: jitter aleatorio (0.5x a 1.5x)
-      // ============================================================
-      const conJitter = (baseMs) => baseMs * (0.5 + Math.random());
-
       for (const model of modelos) {
-        logStatus(`\n📡 Probando con el modelo: ${model}...`);
+        logStatus(`Consultando modelo activo: ${model}...`);
+        loaderText.innerText = `Procesando con ${model}...`;
 
-        // Máximo 4 intentos por modelo con backoff exponencial
-        const MAX_INTENTOS = 4;
-        let exitoModelo = false;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-        for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
-          loaderText.innerText = `Consultando ${model} (intento ${intento}/${MAX_INTENTOS})...`;
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: SYSTEM_INSTRUCTIONS + "\n\nRealiza la auditoría pedagógica según la Pauta Institucional cruzando los documentos adjuntos." },
+                  { inlineData: { mimeType: "application/pdf", data: tablaB64 } },
+                  { inlineData: { mimeType: "application/pdf", data: pruebaB64 } }
+                ]
+              }]
+            })
+          });
 
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120000);
+          clearTimeout(timeoutId);
 
-            let response;
-            let json = {};
-
-            try {
-              response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-goog-api-key': apiKey
-                },
-                signal: controller.signal,
-                body: JSON.stringify({
-                  contents: [{
-                    parts: [
-                      { text: SYSTEM_INSTRUCTIONS + "\n\nRealiza la auditoría pedagógica técnica cruzando la Tabla de Especificaciones y la Evaluación adjuntas. Recuerda generar los dos bloques con los marcadores exactos." },
-                      { inlineData: { mimeType: "application/pdf", data: tablaB64 } },
-                      { inlineData: { mimeType: "application/pdf", data: pruebaB64 } }
-                    ]
-                  }],
-                  generationConfig: {
-                    temperature: 0.2,
-                    maxOutputTokens: 16384
-                  }
-                })
-              });
-
-              const raw = await response.text();
-              try {
-                json = raw ? JSON.parse(raw) : {};
-              } catch (_) {
-                json = { error: { message: raw || 'Respuesta no JSON de Gemini.' } };
-              }
-            } finally {
-              clearTimeout(timeoutId);
-            }
-
-            // Caso exitoso
-            if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
-              data = json;
-              logStatus(`✅ Conexión exitosa con el modelo ${model} (intento ${intento})`);
-              exitoModelo = true;
-              break;
-            }
-
-            // Error 503 o 429 → reintentar con backoff
-            const status = response.status;
-            const errDetail = json.error ? json.error.message : 'HTTP ' + status;
-            const esTransitorio = status === 503 || status === 429 || status === 502;
-
-            if (esTransitorio && intento < MAX_INTENTOS) {
-              // Backoff exponencial: 2s, 4s, 8s (con jitter)
-              const delayBase = Math.pow(2, intento) * 1000;
-              const delay = Math.round(conJitter(delayBase));
-              logStatus(`⏳ ${model} saturado (HTTP ${status}). Reintentando en ${(delay/1000).toFixed(1)}s... (intento ${intento}/${MAX_INTENTOS})`);
-              loaderText.innerText = `Servidor saturado. Reintentando en ${(delay/1000).toFixed(0)}s...`;
-              await esperar(delay);
-              continue;
-            }
-
-            // Si no es transitorio o se agotaron los intentos
-            erroresAcumulados.push(`[${model}] (intento ${intento}): ${errDetail}`);
-            logStatus(`⚠️ ${model} falló: ${errDetail}`);
+          const json = await response.json();
+          if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
+            data = json;
+            logStatus(`✅ Conexión exitosa con ${model}`);
             break;
-
-          } catch (e) {
-            const msg = e.name === 'AbortError' ? 'Tiempo de espera agotado (120s)' : e.message;
-
-            if (intento < MAX_INTENTOS) {
-              const delay = Math.round(conJitter(Math.pow(2, intento) * 1000));
-              logStatus(`⏳ Error de red con ${model}. Reintentando en ${(delay/1000).toFixed(1)}s... (intento ${intento}/${MAX_INTENTOS})`);
-              await esperar(delay);
-              continue;
-            }
-
-            erroresAcumulados.push(`[${model}] (intento ${intento}): ${msg}`);
-            logStatus(`⚠️ ${model} falló: ${msg}`);
-            break;
+          } else {
+            const errDetail = json.error ? json.error.message : 'HTTP ' + response.status;
+            erroresAcumulados.push(`[${model}]: ${errDetail}`);
+            logStatus(`⚠️ Respuesta de ${model}: ${errDetail}`);
           }
-        }
-
-        if (exitoModelo) break;
-
-        // Pequeña pausa antes de probar el siguiente modelo
-        if (model !== modelos[modelos.length - 1]) {
-          logStatus(`⏸️ Cambiando al siguiente modelo...`);
-          await esperar(1500);
+        } catch (e) {
+          const msg = e.name === 'AbortError' ? 'Tiempo de espera agotado (60s)' : e.message;
+          erroresAcumulados.push(`[${model}]: ${msg}`);
+          logStatus(`⚠️ Falló conexión con ${model}: ${msg}`);
         }
       }
 
       if (!data) {
-        throw new Error('Todos los modelos de Gemini están experimentando alta demanda en este momento. Esto es un problema temporal de Google, no de tu configuración. Por favor, espera unos minutos y vuelve a intentarlo.\n\nDetalle técnico:\n' + erroresAcumulados.join('\n'));
+        throw new Error('No se pudo obtener respuesta de la API de Gemini:\n' + erroresAcumulados.join('\n'));
       }
 
-      logStatus('\n[4/4] Generando informe final...');
+      logStatus('[4/4] Generando informe pedagógico...');
       loaderText.innerText = 'Renderizando informe...';
 
-      const partes = data?.candidates?.[0]?.content?.parts || [];
-      const textoResultado = partes
-        .filter(p => typeof p.text === 'string')
-        .map(p => p.text)
-        .join('\n')
-        .trim();
+      const textoResultado = data.candidates[0].content.parts[0].text;
 
-      if (!textoResultado) {
-        throw new Error('Gemini respondió sin contenido de texto. Revisa la clave API, el modelo y los archivos PDF.');
-      }
-
-      // ============================================================
-      // SEPARACIÓN DE INFORME Y CARTA
-      // ============================================================
-      const separarBloques = (texto) => {
-        const regexInforme = /===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i;
-        const regexCarta = /===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i;
-
-        const matchInforme = texto.match(regexInforme);
-        const matchCarta = texto.match(regexCarta);
-
-        const informe = matchInforme ? matchInforme[1].trim() : '';
-        let carta = matchCarta ? matchCarta[1].trim() : '';
-
-        // Validar que la carta termine con "Equipo CIR"
-        if (carta && !/Equipo CIR\s*$/i.test(carta)) {
-          carta = carta.replace(/\s*$/, '') + '\n\nAtentamente,\n\nEquipo CIR';
-        }
-
-        return { informe, carta };
-      };
-
-      const { informe, carta } = separarBloques(textoResultado);
-
-      reporteContenido = informe || textoResultado;
-      cartaContenido = carta || '';
-
-      // Si no se detectó la carta, hacer una segunda llamada específica
-      if (!cartaContenido) {
-        logStatus('⚠️ No se detectó la carta en la respuesta. Solicitando carta independiente...');
-
-        try {
-          const controller2 = new AbortController();
-          const timeoutId2 = setTimeout(() => controller2.abort(), 120000);
-
-          const response2 = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': apiKey
-            },
-            signal: controller2.signal,
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: 'Genera únicamente una carta de retroalimentación formativa profesional para el docente, basada en el siguiente informe de auditoría pedagógica:\n\n' + reporteContenido + '\n\nLa carta debe ser respetuosa, formativa, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora en aprendizaje profundo, interpretación, comparación, justificación, evidencia y metacognición. Termina exactamente con:\n\nAtentamente,\n\nEquipo CIR' }
-                ]
-              }],
-              generationConfig: {
-                temperature: 0.3,
-                maxOutputTokens: 8192
-              }
-            })
-          });
-
-          clearTimeout(timeoutId2);
-          const raw2 = await response2.text();
-          const json2 = JSON.parse(raw2);
-
-          if (response2.ok && json2.candidates && json2.candidates[0]?.content?.parts[0]?.text) {
-            cartaContenido = json2.candidates[0].content.parts[0].text.trim();
-            if (!/Equipo CIR\s*$/i.test(cartaContenido)) {
-              cartaContenido = cartaContenido.replace(/\s*$/, '') + '\n\nAtentamente,\n\nEquipo CIR';
-            }
-            logStatus('✅ Carta generada exitosamente.');
-          } else {
-            throw new Error('No se pudo generar la carta.');
-          }
-        } catch (e) {
-          logStatus('⚠️ No se pudo generar la carta independiente: ' + e.message);
-          cartaContenido = 'No fue posible generar la carta de retroalimentación.';
-        }
-      }
-
-      // Renderizar informe
       if (window.marked) {
-        document.getElementById('reporteContenido').innerHTML = marked.parse(reporteContenido);
+        document.getElementById('reporteContenido').innerHTML = marked.parse(textoResultado);
       } else {
-        document.getElementById('reporteContenido').innerText = reporteContenido;
+        document.getElementById('reporteContenido').innerText = textoResultado;
       }
 
       document.getElementById('results').style.display = 'block';
-      logStatus('✅ Proceso completado exitosamente.');
 
     } catch (err) {
-      let detalle = err?.message || String(err);
-
-      // Clasificación de errores para mensajes amigables
-      if (/Failed to fetch|NetworkError|Load failed/i.test(detalle)) {
-        detalle = 'No fue posible conectar con los servidores de Google Gemini. Verifica tu conexión a internet y que la API Key esté correctamente configurada y habilitada para la API de Gemini.';
-      } else if (/HTTP 400|invalid_request/i.test(detalle)) {
-        detalle = 'Solicitud inválida (HTTP 400). Verifica que los archivos PDF sean válidos y que la API Key sea correcta.';
-      } else if (/HTTP 429|rate_limit|quota/i.test(detalle)) {
-        detalle = 'Se alcanzó el límite de cuota de la API de Gemini. Espera unos minutos e inténtalo de nuevo, o revisa tu plan de uso.';
-      } else if (/HTTP 401|authentication/i.test(detalle)) {
-        detalle = 'La API Key no es válida o está expirada. Verifícala en Google AI Studio.';
-      } else if (/HTTP 403|permission/i.test(detalle)) {
-        detalle = 'La API Key no tiene permisos para este recurso. Verifica que la API de Gemini esté habilitada en tu proyecto.';
-      } else if (/alta demanda|high demand|UNAVAILABLE|503/i.test(detalle)) {
-        detalle = '⚠️ Google Gemini está experimentando alta demanda en este momento. Esto es un problema temporal de los servidores de Google, no de tu configuración. Se intentó con reintentos automáticos (hasta 12 veces entre los 3 modelos) pero todos siguen saturados. Por favor, espera 5-10 minutos y vuelve a intentarlo.\n\nSi el problema persiste, considera activar el plan de pago (Tier 1) de Google AI Studio, que ofrece mayor disponibilidad y límites más altos.';
-      }
-
-      mostrarError('Error durante el proceso:\n' + detalle);
+      errorBox.innerText = '❌ Error durante la auditoría:\n' + err.message;
+      errorBox.style.display = 'block';
     } finally {
       document.getElementById('btnAnalizar').disabled = false;
       document.getElementById('loader').style.display = 'none';
     }
-  }
-
-  // ============================================================
-  // DESCARGA DE PDFs
-  // ============================================================
-  function descargarInformePDF() {
-    if (!reporteContenido || !reporteContenido.trim()) {
-      mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
-      return;
-    }
-
-    const contenedor = document.createElement('div');
-    contenedor.style.padding = '20px';
-    contenedor.style.fontFamily = "'Segoe UI', system-ui, sans-serif";
-    contenedor.style.color = '#1e293b';
-    contenedor.style.lineHeight = '1.6';
-    
-    contenedor.innerHTML = window.marked ? marked.parse(reporteContenido) : reporteContenido;
-
-    const opciones = {
-      margin:       [12, 12, 12, 12],
-      filename:     'Informe_Auditoria_Pedagogica_UTP.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opciones).from(contenedor).save();
-  }
-
-  function descargarCartaPDF() {
-    if (!cartaContenido || !cartaContenido.trim()) {
-      mostrarError('No hay carta de retroalimentación disponible para descargar. Ejecuta primero la auditoría.');
-      return;
-    }
-
-    const contenedor = document.createElement('div');
-    contenedor.style.padding = '20px';
-    contenedor.style.fontFamily = "'Segoe UI', system-ui, sans-serif";
-    contenedor.style.color = '#1e293b';
-    contenedor.style.lineHeight = '1.8';
-    contenedor.style.whiteSpace = 'pre-wrap';
-    
-    contenedor.textContent = cartaContenido;
-
-    const opciones = {
-      margin:       [12, 12, 12, 12],
-      filename:     'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opciones).from(contenedor).save();
   }
 </script>
 </body>
