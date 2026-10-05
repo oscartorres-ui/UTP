@@ -59,9 +59,10 @@
     .grid-files { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
     @media (max-width: 640px) { .grid-files { grid-template-columns: 1fr; } }
     
-    .file-box { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 16px; border-radius: 12px; }
+    .file-box { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 16px; border-radius: 12px; transition: all 0.3s; }
     .file-box.required { border-color: #c4b5fd; background: #faf5ff; }
     .file-box.independent { border-color: #67e8f9; background: #f0fdff; }
+    .file-box.auto-corrected { border-color: #22c55e; background: #f0fdf4; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
     .file-box label { font-weight: 700; font-size: 0.9rem; color: #1e293b; display: block; margin-bottom: 4px; }
     .file-box .sub { font-size: 0.78rem; color: #64748b; margin-bottom: 12px; line-height: 1.35; }
     .file-box .optional { font-weight: 400; color: #94a3b8; font-size: 0.8rem; }
@@ -77,6 +78,8 @@
     
     #errorBox { display: none; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 14px 16px; border-radius: 10px; margin-bottom: 15px; font-size: 0.88rem; word-break: break-word; line-height: 1.4; white-space: pre-wrap; }
     
+    #infoBox { display: none; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 14px 16px; border-radius: 10px; margin-bottom: 15px; font-size: 0.88rem; line-height: 1.5; white-space: pre-wrap; }
+
     #statusBox { display: none; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 14px; border-radius: 10px; margin-bottom: 15px; font-size: 0.85rem; font-family: monospace; line-height: 1.5; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
 
     #loader { display: none; text-align: center; padding: 20px; font-weight: 600; color: #6b21a8; }
@@ -118,48 +121,43 @@
     </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- PAR OBLIGATORIO: TABLA + EVALUACIÓN ESCRITA   -->
-  <!-- ============================================== -->
   <div class="seccion-titulo">
     📘 Evaluación escrita
     <span class="hint">(par obligatorio: Tabla de Especificaciones + Prueba)</span>
   </div>
   <div class="grid-files">
-    <div class="file-box required">
+    <div class="file-box required" id="box-tabla">
       <label>Tabla de Especificaciones</label>
       <div class="sub">PDF con objetivos, habilidades e ítems planificados.</div>
       <input type="file" id="tablaPdf" accept="application/pdf">
     </div>
 
-    <div class="file-box required">
+    <div class="file-box required" id="box-prueba">
       <label>Evaluación o Prueba Escrita</label>
       <div class="sub">PDF de la prueba escrita que se desea auditar.</div>
       <input type="file" id="pruebaPdf" accept="application/pdf">
     </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- INSTRUMENTOS INDEPENDIENTES DE AULA            -->
-  <!-- ============================================== -->
   <div class="seccion-titulo">
     🧩 Instrumentos de aula
     <span class="hint">(opcionales e independientes entre sí)</span>
   </div>
   <div class="grid-files">
-    <div class="file-box independent">
+    <div class="file-box independent" id="box-rubrica">
       <label>Rúbrica de Evaluación <span class="optional">(opcional)</span></label>
       <div class="sub">Rúbrica para calificar actividades, trabajos o desempeños en clases. Se audita como instrumento independiente.</div>
       <input type="file" id="rubricaPdf" accept="application/pdf">
     </div>
 
-    <div class="file-box independent">
+    <div class="file-box independent" id="box-escala">
       <label>Escala de Apreciación <span class="optional">(opcional)</span></label>
       <div class="sub">Escala de apreciación u otro instrumento complementario. Se audita como instrumento independiente.</div>
       <input type="file" id="escalaPdf" accept="application/pdf">
     </div>
   </div>
 
+  <div id="infoBox"></div>
   <div id="errorBox"></div>
   <div id="statusBox"></div>
 
@@ -215,6 +213,135 @@
 
   function ocultarError() {
     document.getElementById('errorBox').style.display = 'none';
+  }
+
+  function mostrarInfo(msg) {
+    const infoBox = document.getElementById('infoBox');
+    infoBox.innerText = msg;
+    infoBox.style.display = 'block';
+  }
+
+  function ocultarInfo() {
+    document.getElementById('infoBox').style.display = 'none';
+  }
+
+  // ============================================================
+  // DETECCIÓN INTELIGENTE DEL TIPO DE INSTRUMENTO
+  // por palabras clave en el nombre del archivo
+  // ============================================================
+  function detectarTipoInstrumento(nombreArchivo) {
+    if (!nombreArchivo) return null;
+    // Normalizar: minúsculas y quitar acentos
+    const nombre = nombreArchivo
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    // Prioridad: rúbrica > escala > tabla > prueba
+    // (rúbrica y escala son más específicas)
+    if (nombre.includes('rubrica')) return 'rubrica';
+    if (nombre.includes('escala') || nombre.includes('apreciacion')) return 'escala';
+    if (nombre.includes('tabla') || nombre.includes('especificacion')) return 'tabla';
+    if (nombre.includes('prueba') || nombre.includes('evaluacion') ||
+        nombre.includes('examen') || nombre.includes('test')) return 'prueba';
+
+    return null; // No se pudo detectar
+  }
+
+  // Reasigna un File a un input file específico usando DataTransfer
+  function asignarArchivoAInput(inputId, file) {
+    const input = document.getElementById(inputId);
+    if (!input || !file) return false;
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      return true;
+    } catch (e) {
+      console.warn('No se pudo reasignar archivo:', e);
+      return false;
+    }
+  }
+
+  // ============================================================
+  // AUTO-CORRECCIÓN: reasigna archivos a los campos correctos
+  // según el nombre del archivo
+  // ============================================================
+  function autoCorregirCampos() {
+    const campos = [
+      { id: 'tablaPdf', tipo: 'tabla', nombre: 'Tabla de Especificaciones' },
+      { id: 'pruebaPdf', tipo: 'prueba', nombre: 'Evaluación/Prueba' },
+      { id: 'rubricaPdf', tipo: 'rubrica', nombre: 'Rúbrica' },
+      { id: 'escalaPdf', tipo: 'escala', nombre: 'Escala de Apreciación' }
+    ];
+
+    // 1) Recopilar todos los archivos y detectar su tipo
+    const archivosDetectados = {};
+    const correcciones = [];
+
+    campos.forEach(campo => {
+      const input = document.getElementById(campo.id);
+      const file = input?.files?.[0];
+      if (!file) return;
+
+      const tipoDetectado = detectarTipoInstrumento(file.name);
+
+      // Si no se pudo detectar, dejarlo donde está
+      if (!tipoDetectado) return;
+
+      // Si el tipo detectado NO coincide con el campo donde está
+      if (tipoDetectado !== campo.tipo) {
+        // Guardarlo para reasignar
+        if (!archivosDetectados[tipoDetectado]) {
+          archivosDetectados[tipoDetectado] = file;
+        }
+        correcciones.push({
+          archivo: file.name,
+          de: campo.nombre,
+          a: tipoDetectado
+        });
+        // Limpiar el campo actual
+        try {
+          const dt = new DataTransfer();
+          input.files = dt.files;
+        } catch (e) {}
+      }
+    });
+
+    // 2) Aplicar las reasignaciones
+    const nombresDestino = {
+      tabla: 'tablaPdf',
+      prueba: 'pruebaPdf',
+      rubrica: 'rubricaPdf',
+      escala: 'escalaPdf'
+    };
+    const nombresLegibles = {
+      tabla: 'Tabla de Especificaciones',
+      prueba: 'Evaluación/Prueba',
+      rubrica: 'Rúbrica',
+      escala: 'Escala de Apreciación'
+    };
+
+    const mensajes = [];
+    Object.keys(archivosDetectados).forEach(tipo => {
+      const file = archivosDetectados[tipo];
+      const destino = nombresDestino[tipo];
+      // Solo reasignar si el campo destino está vacío
+      const inputDestino = document.getElementById(destino);
+      if (inputDestino && !inputDestino.files?.length) {
+        if (asignarArchivoAInput(destino, file)) {
+          mensajes.push(`🔄 "${file.name}" → movido a "${nombresLegibles[tipo]}"`);
+          // Destacar visualmente el campo corregido
+          const box = document.getElementById('box-' + tipo);
+          if (box) {
+            box.classList.add('auto-corrected');
+            setTimeout(() => box.classList.remove('auto-corrected'), 3000);
+          }
+        }
+      }
+    });
+
+    return mensajes;
   }
 
   // ============================================================
@@ -360,15 +487,35 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
   // FUNCIÓN PRINCIPAL DE AUDITORÍA
   // ============================================================
   async function ejecutarAuditoria() {
+    ocultarError();
+    ocultarInfo();
+
+    // ============================================================
+    // AUTO-CORRECCIÓN DE CAMPOS POR NOMBRE DE ARCHIVO
+    // ============================================================
+    const correcciones = autoCorregirCampos();
+    if (correcciones && correcciones.length > 0) {
+      mostrarInfo(
+        '🔄 Se detectaron archivos en campos incorrectos y se reubicaron automáticamente según su nombre:\n\n' +
+        correcciones.map(c => `• ${c.archivo}\n   De: ${c.de}\n   A: ${c.a}`).join('\n\n') +
+        '\n\nVerifica los campos y vuelve a presionar el botón si todo está correcto.'
+      );
+    }
+
     const apiKey = document.getElementById('apiKey').value.trim();
-    const tablaFile = document.getElementById('tablaPdf').files[0];
-    const pruebaFile = document.getElementById('pruebaPdf').files[0];
-    const rubricaFile = document.getElementById('rubricaPdf').files[0];
-    const escalaFile = document.getElementById('escalaPdf').files[0];
+    const tablaInput = document.getElementById('tablaPdf');
+    const pruebaInput = document.getElementById('pruebaPdf');
+    const rubricaInput = document.getElementById('rubricaPdf');
+    const escalaInput = document.getElementById('escalaPdf');
+
+    const tablaFile = tablaInput?.files?.[0];
+    const pruebaFile = pruebaInput?.files?.[0];
+    const rubricaFile = rubricaInput?.files?.[0];
+    const escalaFile = escalaInput?.files?.[0];
+
     const statusBox = document.getElementById('statusBox');
     const loaderText = document.getElementById('loaderText');
 
-    ocultarError();
     statusBox.style.display = 'none';
     statusBox.innerText = '';
     reporteContenido = '';
@@ -379,8 +526,12 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       mostrarError('Debes ingresar tu Clave API de Gemini.');
       return;
     }
-    if (!tablaFile || !pruebaFile) {
-      mostrarError('Debes seleccionar los archivos PDF de la Tabla de Especificaciones y de la Evaluación Escrita (son obligatorios).');
+    if (!tablaFile) {
+      mostrarError('Falta el PDF de la Tabla de Especificaciones. Cárgalo en el campo "📘 Tabla de Especificaciones".');
+      return;
+    }
+    if (!pruebaFile) {
+      mostrarError('Falta el PDF de la Evaluación Escrita. Cárgalo en el campo "📘 Evaluación o Prueba Escrita".');
       return;
     }
     if (tablaFile.type !== 'application/pdf' || pruebaFile.type !== 'application/pdf') {
@@ -396,11 +547,25 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       return;
     }
 
+    // Advertencia si un archivo no tiene relación aparente con su campo
+    const advertencias = [];
+    const tipoTabla = detectarTipoInstrumento(tablaFile.name);
+    const tipoPrueba = detectarTipoInstrumento(pruebaFile.name);
+    if (tipoTabla && tipoTabla !== 'tabla') {
+      advertencias.push(`El archivo "${tablaFile.name}" parece ser de tipo "${tipoTabla}", no una Tabla de Especificaciones.`);
+    }
+    if (tipoPrueba && tipoPrueba !== 'prueba') {
+      advertencias.push(`El archivo "${pruebaFile.name}" parece ser de tipo "${tipoPrueba}", no una Evaluación/Prueba.`);
+    }
+    if (advertencias.length) {
+      mostrarInfo('ℹ️ Advertencias:\n\n• ' + advertencias.join('\n• ') + '\n\nSi estás seguro, presiona "Auditar" nuevamente para continuar.');
+    }
+
     const totalSize = tablaFile.size + pruebaFile.size +
                       (rubricaFile ? rubricaFile.size : 0) +
                       (escalaFile ? escalaFile.size : 0);
     if (totalSize > 19 * 1024 * 1024) {
-      mostrarError('Los archivos PDF superan los 19 MB combinados. La API de Gemini permite un máximo de 20 MB por solicitud.');
+      mostrarError(`Los archivos PDF suman ${(totalSize / 1024 / 1024).toFixed(1)} MB y superan el límite de 19 MB.`);
       return;
     }
 
@@ -409,24 +574,25 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     document.getElementById('results').style.display = 'none';
 
     try {
-      // Contamos cuántos archivos en total
       const totalArchivos = 2 + (rubricaFile ? 1 : 0) + (escalaFile ? 1 : 0);
       let paso = 1;
 
-      logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Tabla (${(tablaFile.size / 1024).toFixed(1)} KB)...`);
+      logStatus(`✅ Archivos validados: Tabla (${(tablaFile.size/1024).toFixed(0)} KB), Prueba (${(pruebaFile.size/1024).toFixed(0)} KB)${rubricaFile ? ', Rúbrica ('+(rubricaFile.size/1024).toFixed(0)+' KB)' : ''}${escalaFile ? ', Escala ('+(escalaFile.size/1024).toFixed(0)+' KB)' : ''}`);
+
+      logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Tabla...`);
       loaderText.innerText = 'Leyendo Tabla de Especificaciones...';
       const tablaB64 = await fileToBase64(tablaFile);
       paso++;
 
-      logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Evaluación (${(pruebaFile.size / 1024).toFixed(1)} KB)...`);
+      logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Evaluación...`);
       loaderText.innerText = 'Leyendo Evaluación Escrita...';
       const pruebaB64 = await fileToBase64(pruebaFile);
       paso++;
 
       let rubricaB64 = null;
       if (rubricaFile) {
-        logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Rúbrica (${(rubricaFile.size / 1024).toFixed(1)} KB)...`);
-        loaderText.innerText = 'Leyendo Rúbrica de Evaluación...';
+        logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Rúbrica...`);
+        loaderText.innerText = 'Leyendo Rúbrica...';
         rubricaB64 = await fileToBase64(rubricaFile);
         paso++;
       } else {
@@ -435,7 +601,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
       let escalaB64 = null;
       if (escalaFile) {
-        logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Escala (${(escalaFile.size / 1024).toFixed(1)} KB)...`);
+        logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Escala...`);
         loaderText.innerText = 'Leyendo Escala de Apreciación...';
         escalaB64 = await fileToBase64(escalaFile);
         paso++;
@@ -443,18 +609,16 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         logStatus(`[--] Escala de Apreciación no proporcionada. Omitiendo.`);
       }
 
-      logStatus(`[${totalArchivos + 2}/${totalArchivos + 2}] Conectando con los servidores de Google Gemini...`);
+      logStatus(`[${totalArchivos + 2}/${totalArchivos + 2}] Conectando con Google Gemini...`);
 
-      // Construimos el texto contextual del prompt según los archivos presentes
-      const instrumentosIncluidos = [];
-      instrumentosIncluidos.push('- Tabla de Especificaciones (obligatoria)');
-      instrumentosIncluidos.push('- Evaluación Escrita (obligatoria)');
-      instrumentosIncluidos.push(rubricaB64 ? '- Rúbrica de Evaluación (instrumento independiente de aula) INCLUIDA' : '- Rúbrica de Evaluación: NO proporcionada (omite su sección de auditoría)');
-      instrumentosIncluidos.push(escalaB64 ? '- Escala de Apreciación (instrumento independiente de aula) INCLUIDA' : '- Escala de Apreciación: NO proporcionada (omite su sección de auditoría)');
-
+      const instrumentosIncluidos = [
+        '- Tabla de Especificaciones (obligatoria)',
+        '- Evaluación Escrita (obligatoria)',
+        rubricaB64 ? '- Rúbrica de Evaluación (instrumento independiente de aula) INCLUIDA' : '- Rúbrica de Evaluación: NO proporcionada (omite su sección de auditoría)',
+        escalaB64 ? '- Escala de Apreciación (instrumento independiente de aula) INCLUIDA' : '- Escala de Apreciación: NO proporcionada (omite su sección de auditoría)'
+      ];
       const contextoArchivos = 'INSTRUMENTOS RECIBIDOS EN ESTA SOLICITUD:\n' + instrumentosIncluidos.join('\n');
 
-      // Modelos actuales de la API de Gemini
       const modelos = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
       let data = null;
       let erroresAcumulados = [];
@@ -478,19 +642,14 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
             let response;
             let json = {};
 
-            // Construimos las parts: texto + PDFs en orden
             const parts = [
               { text: SYSTEM_INSTRUCTIONS + "\n\n" + contextoArchivos + "\n\nRealiza la auditoría pedagógica completa. Analiza la Tabla y la Evaluación Escrita de forma cruzada. " + (rubricaB64 ? "Audita la Rúbrica como instrumento independiente de aula. " : "") + (escalaB64 ? "Audita la Escala de Apreciación como instrumento independiente de aula. " : "") + "Genera los dos bloques (informe y carta) con los marcadores exactos." },
               { inlineData: { mimeType: "application/pdf", data: tablaB64 } },
               { inlineData: { mimeType: "application/pdf", data: pruebaB64 } }
             ];
 
-            if (rubricaB64) {
-              parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
-            }
-            if (escalaB64) {
-              parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
-            }
+            if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
+            if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
             try {
               response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -519,7 +678,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
               clearTimeout(timeoutId);
             }
 
-            // Caso exitoso
             if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
               data = json;
               logStatus(`✅ Conexión exitosa con el modelo ${model} (intento ${intento})`);
@@ -586,7 +744,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         throw new Error('Gemini respondió sin contenido de texto. Revisa la clave API, el modelo y los archivos PDF.');
       }
 
-      // Separación de bloques
       const separarBloques = (texto) => {
         const regexInforme = /===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i;
         const regexCarta = /===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i;
@@ -609,7 +766,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       reporteContenido = informe || textoResultado;
       cartaContenido = carta || '';
 
-      // Si no se detectó la carta, hacer una segunda llamada específica
       if (!cartaContenido) {
         logStatus('⚠️ No se detectó la carta en la respuesta. Solicitando carta independiente...');
 
@@ -656,7 +812,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         }
       }
 
-      // Renderizar informe
       if (window.marked) {
         document.getElementById('reporteContenido').innerHTML = marked.parse(reporteContenido);
       } else {
@@ -670,17 +825,17 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       let detalle = err?.message || String(err);
 
       if (/Failed to fetch|NetworkError|Load failed/i.test(detalle)) {
-        detalle = 'No fue posible conectar con los servidores de Google Gemini. Verifica tu conexión a internet y que la API Key esté correctamente configurada y habilitada para la API de Gemini.';
+        detalle = 'No fue posible conectar con los servidores de Google Gemini. Verifica tu conexión a internet y que la API Key esté correctamente configurada.';
       } else if (/HTTP 400|invalid_request/i.test(detalle)) {
         detalle = 'Solicitud inválida (HTTP 400). Verifica que los archivos PDF sean válidos y que la API Key sea correcta.';
       } else if (/HTTP 429|rate_limit|quota/i.test(detalle)) {
-        detalle = 'Se alcanzó el límite de cuota de la API de Gemini. Espera unos minutos e inténtalo de nuevo, o revisa tu plan de uso.';
+        detalle = 'Se alcanzó el límite de cuota de la API de Gemini. Espera unos minutos e inténtalo de nuevo.';
       } else if (/HTTP 401|authentication/i.test(detalle)) {
         detalle = 'La API Key no es válida o está expirada. Verifícala en Google AI Studio.';
       } else if (/HTTP 403|permission/i.test(detalle)) {
         detalle = 'La API Key no tiene permisos para este recurso. Verifica que la API de Gemini esté habilitada en tu proyecto.';
       } else if (/alta demanda|high demand|UNAVAILABLE|503/i.test(detalle)) {
-        detalle = '⚠️ Google Gemini está experimentando alta demanda en este momento. Esto es un problema temporal de los servidores de Google, no de tu configuración. Se intentó con reintentos automáticos (hasta 12 veces entre los 3 modelos) pero todos siguen saturados. Por favor, espera 5-10 minutos y vuelve a intentarlo.\n\nSi el problema persiste, considera activar el plan de pago (Tier 1) de Google AI Studio, que ofrece mayor disponibilidad y límites más altos.';
+        detalle = '⚠️ Google Gemini está experimentando alta demanda en este momento. Espera 5-10 minutos y vuelve a intentarlo.';
       }
 
       mostrarError('Error durante el proceso:\n' + detalle);
