@@ -88,6 +88,9 @@
       <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de Google AI Studio">
       <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility()">👁</button>
     </div>
+    <div class="sub" style="margin-top:8px;color:#64748b;">
+      La clave se utiliza solo desde tu navegador. Para producción, usa una API Key restringida al dominio de GitHub Pages.
+    </div>
   </div>
 
   <div class="grid-files">
@@ -207,6 +210,12 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
       return;
     }
 
+    if (tablaFile.type !== 'application/pdf' || pruebaFile.type !== 'application/pdf') {
+      errorBox.innerText = '⚠️ Ambos archivos deben ser PDF válidos.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
     if (tablaFile.size > 15 * 1024 * 1024 || pruebaFile.size > 15 * 1024 * 1024) {
       errorBox.innerText = '⚠️️ Uno de los archivos PDF supera los 15MB. Utiliza archivos de menor peso.';
       errorBox.style.display = 'block';
@@ -229,7 +238,7 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
       logStatus('[3/4] Conectando con los servidores de Google Gemini...');
 
       // Modelos actuales de la API de Gemini
-      const modelos = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+      const modelos = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
       let data = null;
       let erroresAcumulados = [];
 
@@ -239,26 +248,43 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000);
+          const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal,
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: SYSTEM_INSTRUCTIONS + "\n\nRealiza la auditoría pedagógica técnica cruzando la Tabla de Especificaciones y la Evaluación adjuntas." },
-                  { inlineData: { mimeType: "application/pdf", data: tablaB64 } },
-                  { inlineData: { mimeType: "application/pdf", data: pruebaB64 } }
-                ]
-              }]
-            })
-          });
+          let response;
+          let json = {};
 
-          clearTimeout(timeoutId);
+          try {
+            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+              },
+              signal: controller.signal,
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: SYSTEM_INSTRUCTIONS + "\n\nRealiza la auditoría pedagógica técnica cruzando la Tabla de Especificaciones y la Evaluación adjuntas." },
+                    { inlineData: { mimeType: "application/pdf", data: tablaB64 } },
+                    { inlineData: { mimeType: "application/pdf", data: pruebaB64 } }
+                  ]
+                }],
+                generationConfig: {
+                  temperature: 0.2,
+                  maxOutputTokens: 30000
+                }
+              })
+            });
 
-          const json = await response.json();
+            const raw = await response.text();
+            try {
+              json = raw ? JSON.parse(raw) : {};
+            } catch (_) {
+              json = { error: { message: raw || 'Respuesta no JSON de Gemini.' } };
+            }
+          } finally {
+            clearTimeout(timeoutId);
+          }
           if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
             data = json;
             logStatus(`✅ Conexión exitosa con el modelo ${model}`);
@@ -282,9 +308,19 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
       logStatus('[4/4] Generando informe final...');
       loaderText.innerText = 'Renderizando informe...';
 
-      const textoResultado = data.candidates[0].content.parts[0].text;
+      const partes = data?.candidates?.[0]?.content?.parts || [];
+      const textoResultado = partes
+        .filter(p => typeof p.text === 'string')
+        .map(p => p.text)
+        .join('\n')
+        .trim();
+
+      if (!textoResultado) {
+        throw new Error('Gemini respondió sin contenido de texto. Revisa la clave API, el modelo y los archivos PDF.');
+      }
 
       if (window.marked) {
+        // marked se usa solo para transformar Markdown generado por Gemini.
         document.getElementById('reporteContenido').innerHTML = marked.parse(textoResultado);
       } else {
         document.getElementById('reporteContenido').innerText = textoResultado;
@@ -293,7 +329,11 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
       document.getElementById('results').style.display = 'block';
 
     } catch (err) {
-      errorBox.innerText = '❌ Error durante el proceso:\n' + err.message;
+      let detalle = err?.message || String(err);
+      if (/Failed to fetch|NetworkError|Load failed/i.test(detalle)) {
+        detalle += '\n\nPosible causa: restricción de red/CORS o una API Key sin permisos para la API de Gemini. Si publicas en GitHub Pages, restringe la clave por HTTP referrer al dominio https://oscartorres-ui.github.io/* y habilita la Gemini API.';
+      }
+      errorBox.innerText = '❌ Error durante el proceso:\n' + detalle;
       errorBox.style.display = 'block';
     } finally {
       document.getElementById('btnAnalizar').disabled = false;
