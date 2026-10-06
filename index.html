@@ -60,9 +60,8 @@
     @media (max-width: 640px) { .grid-files { grid-template-columns: 1fr; } }
     
     .file-box { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 16px; border-radius: 12px; transition: all 0.3s; }
-    .file-box.required { border-color: #c4b5fd; background: #faf5ff; }
+    .file-box.pair { border-color: #c4b5fd; background: #faf5ff; }
     .file-box.independent { border-color: #67e8f9; background: #f0fdff; }
-    .file-box.auto-corrected { border-color: #22c55e; background: #f0fdf4; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
     .file-box label { font-weight: 700; font-size: 0.9rem; color: #1e293b; display: block; margin-bottom: 4px; }
     .file-box .sub { font-size: 0.78rem; color: #64748b; margin-bottom: 12px; line-height: 1.35; }
     .file-box .optional { font-weight: 400; color: #94a3b8; font-size: 0.8rem; }
@@ -107,7 +106,7 @@
 <div class="card">
   <div class="header-title">
     <h2>Prepara tu auditoría</h2>
-    <p>Carga los documentos requeridos y obtén un informe técnico-pedagógico para el Colegio Isabel Riquelme.</p>
+    <p>Carga uno o más instrumentos y obtén un informe técnico-pedagógico para el Colegio Isabel Riquelme.</p>
   </div>
 
   <div class="input-group">
@@ -123,17 +122,17 @@
 
   <div class="seccion-titulo">
     📘 Evaluación escrita
-    <span class="hint">(par obligatorio: Tabla de Especificaciones + Prueba)</span>
+    <span class="hint">(puedes cargar uno, ambos o ninguno)</span>
   </div>
   <div class="grid-files">
-    <div class="file-box required" id="box-tabla">
-      <label>Tabla de Especificaciones</label>
+    <div class="file-box pair">
+      <label>Tabla de Especificaciones <span class="optional">(opcional)</span></label>
       <div class="sub">PDF con objetivos, habilidades e ítems planificados.</div>
       <input type="file" id="tablaPdf" accept="application/pdf">
     </div>
 
-    <div class="file-box required" id="box-prueba">
-      <label>Evaluación o Prueba Escrita</label>
+    <div class="file-box pair">
+      <label>Evaluación o Prueba Escrita <span class="optional">(opcional)</span></label>
       <div class="sub">PDF de la prueba escrita que se desea auditar.</div>
       <input type="file" id="pruebaPdf" accept="application/pdf">
     </div>
@@ -141,18 +140,18 @@
 
   <div class="seccion-titulo">
     🧩 Instrumentos de aula
-    <span class="hint">(opcionales e independientes entre sí)</span>
+    <span class="hint">(puedes cargar uno, ambos o ninguno; cualquier nombre de archivo)</span>
   </div>
   <div class="grid-files">
-    <div class="file-box independent" id="box-rubrica">
+    <div class="file-box independent">
       <label>Rúbrica de Evaluación <span class="optional">(opcional)</span></label>
-      <div class="sub">Rúbrica para calificar actividades, trabajos o desempeños en clases. Se audita como instrumento independiente.</div>
+      <div class="sub">Rúbrica para calificar actividades, trabajos o desempeños en clases.</div>
       <input type="file" id="rubricaPdf" accept="application/pdf">
     </div>
 
-    <div class="file-box independent" id="box-escala">
+    <div class="file-box independent">
       <label>Escala de Apreciación <span class="optional">(opcional)</span></label>
-      <div class="sub">Escala de apreciación u otro instrumento complementario. Se audita como instrumento independiente.</div>
+      <div class="sub">Escala de apreciación u otro instrumento complementario.</div>
       <input type="file" id="escalaPdf" accept="application/pdf">
     </div>
   </div>
@@ -162,7 +161,7 @@
   <div id="statusBox"></div>
 
   <button class="btn-main" id="btnAnalizar" onclick="ejecutarAuditoria()">
-    ✨ Auditar evaluación pedagógica
+    ✨ Auditar instrumentos pedagógicos
   </button>
 
   <div id="loader">
@@ -226,125 +225,6 @@
   }
 
   // ============================================================
-  // DETECCIÓN INTELIGENTE DEL TIPO DE INSTRUMENTO
-  // por palabras clave en el nombre del archivo
-  // ============================================================
-  function detectarTipoInstrumento(nombreArchivo) {
-    if (!nombreArchivo) return null;
-    // Normalizar: minúsculas y quitar acentos
-    const nombre = nombreArchivo
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-
-    // Prioridad: rúbrica > escala > tabla > prueba
-    // (rúbrica y escala son más específicas)
-    if (nombre.includes('rubrica')) return 'rubrica';
-    if (nombre.includes('escala') || nombre.includes('apreciacion')) return 'escala';
-    if (nombre.includes('tabla') || nombre.includes('especificacion')) return 'tabla';
-    if (nombre.includes('prueba') || nombre.includes('evaluacion') ||
-        nombre.includes('examen') || nombre.includes('test')) return 'prueba';
-
-    return null; // No se pudo detectar
-  }
-
-  // Reasigna un File a un input file específico usando DataTransfer
-  function asignarArchivoAInput(inputId, file) {
-    const input = document.getElementById(inputId);
-    if (!input || !file) return false;
-    try {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      return true;
-    } catch (e) {
-      console.warn('No se pudo reasignar archivo:', e);
-      return false;
-    }
-  }
-
-  // ============================================================
-  // AUTO-CORRECCIÓN: reasigna archivos a los campos correctos
-  // según el nombre del archivo
-  // ============================================================
-  function autoCorregirCampos() {
-    const campos = [
-      { id: 'tablaPdf', tipo: 'tabla', nombre: 'Tabla de Especificaciones' },
-      { id: 'pruebaPdf', tipo: 'prueba', nombre: 'Evaluación/Prueba' },
-      { id: 'rubricaPdf', tipo: 'rubrica', nombre: 'Rúbrica' },
-      { id: 'escalaPdf', tipo: 'escala', nombre: 'Escala de Apreciación' }
-    ];
-
-    // 1) Recopilar todos los archivos y detectar su tipo
-    const archivosDetectados = {};
-    const correcciones = [];
-
-    campos.forEach(campo => {
-      const input = document.getElementById(campo.id);
-      const file = input?.files?.[0];
-      if (!file) return;
-
-      const tipoDetectado = detectarTipoInstrumento(file.name);
-
-      // Si no se pudo detectar, dejarlo donde está
-      if (!tipoDetectado) return;
-
-      // Si el tipo detectado NO coincide con el campo donde está
-      if (tipoDetectado !== campo.tipo) {
-        // Guardarlo para reasignar
-        if (!archivosDetectados[tipoDetectado]) {
-          archivosDetectados[tipoDetectado] = file;
-        }
-        correcciones.push({
-          archivo: file.name,
-          de: campo.nombre,
-          a: tipoDetectado
-        });
-        // Limpiar el campo actual
-        try {
-          const dt = new DataTransfer();
-          input.files = dt.files;
-        } catch (e) {}
-      }
-    });
-
-    // 2) Aplicar las reasignaciones
-    const nombresDestino = {
-      tabla: 'tablaPdf',
-      prueba: 'pruebaPdf',
-      rubrica: 'rubricaPdf',
-      escala: 'escalaPdf'
-    };
-    const nombresLegibles = {
-      tabla: 'Tabla de Especificaciones',
-      prueba: 'Evaluación/Prueba',
-      rubrica: 'Rúbrica',
-      escala: 'Escala de Apreciación'
-    };
-
-    const mensajes = [];
-    Object.keys(archivosDetectados).forEach(tipo => {
-      const file = archivosDetectados[tipo];
-      const destino = nombresDestino[tipo];
-      // Solo reasignar si el campo destino está vacío
-      const inputDestino = document.getElementById(destino);
-      if (inputDestino && !inputDestino.files?.length) {
-        if (asignarArchivoAInput(destino, file)) {
-          mensajes.push(`🔄 "${file.name}" → movido a "${nombresLegibles[tipo]}"`);
-          // Destacar visualmente el campo corregido
-          const box = document.getElementById('box-' + tipo);
-          if (box) {
-            box.classList.add('auto-corrected');
-            setTimeout(() => box.classList.remove('auto-corrected'), 3000);
-          }
-        }
-      }
-    });
-
-    return mensajes;
-  }
-
-  // ============================================================
   // CONVERSIÓN DE ARCHIVOS A BASE64
   // ============================================================
   function fileToBase64(file) {
@@ -372,27 +252,30 @@
   }
 
   // ============================================================
-  // INSTRUCCIONES DEL SISTEMA (PROMPT)
+  // INSTRUCCIONES DEL SISTEMA (PROMPT BASE)
   // ============================================================
-  const SYSTEM_INSTRUCTIONS = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar instrumentos de evaluación para la UTP del Colegio Isabel Riquelme y generar un informe de revisión técnica junto con una carta de retroalimentación formativa para el docente.
+  const SYSTEM_INSTRUCTIONS_BASE = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar instrumentos de evaluación para la UTP del Colegio Isabel Riquelme y generar un informe de revisión técnica junto con una carta de retroalimentación formativa para el docente.
 
-RECIBIRÁS DISTINTOS TIPOS DE INSTRUMENTOS:
-A) PAREJA DE EVALUACIÓN ESCRITA (obligatoria):
-   - Tabla de Especificaciones
-   - Evaluación / Prueba Escrita
-   Estos dos documentos deben analizarse CRUZADAMENTE: la prueba escrita debe reflejar lo declarado en la Tabla de Especificaciones.
+TIPOS DE INSTRUMENTOS QUE PUEDES RECIBIR:
+A) Tabla de Especificaciones: declara OA, habilidades, indicadores, ítems y demanda cognitiva planificada.
+B) Evaluación / Prueba Escrita: instrumento sumativo con ítems.
+C) Rúbrica de Evaluación: instrumento para calificar actividades, trabajos o desempeños en clases. Es autónoma respecto a la prueba escrita.
+D) Escala de Apreciación: instrumento complementario de aula. También autónoma.
 
-B) INSTRUMENTOS DE AULA INDEPENDIENTES (opcionales):
-   - Rúbrica de Evaluación: sirve para calificar distintas actividades, trabajos o desempeños en clases. NO necesariamente corresponde a la prueba escrita. Debe auditarse como instrumento autónomo según su propio propósito.
-   - Escala de Apreciación: otro instrumento complementario de aula. También se audita de forma independiente.
+REGLA CRÍTICA DE ADAPTACIÓN:
+- Adapta el informe a los instrumentos que REALMENTE se te hayan proporcionado.
+- NO inventes ni analices instrumentos que no estén adjuntos.
+- Si solo se te da UN instrumento, audítalo de forma autónoma y profunda.
+- Si se te dan DOS o más, analiza cada uno por separado y luego su coherencia cuando corresponda.
 
-REGLA CRÍTICA DE COHERENCIA:
-- La Tabla de Especificaciones y la Evaluación Escrita SÍ deben ser coherentes entre sí.
-- La Rúbrica y la Escala de Apreciación son INDEPENDIENTES de la prueba escrita. NO exijas coherencia directa entre ellas y la prueba. Solo verifica que, si pertenecen al mismo proceso de aprendizaje, sean pedagógicamente complementarias y no contradictorias.
+REGLA DE COHERENCIA CRUZADA:
+- Si están Tabla + Evaluación Escrita → analiza coherencia cruzada obligatoriamente.
+- Si solo está uno de ellos → analízalo sin exigir coherencia con el que falta.
+- Rúbrica y Escala de Apreciación son SIEMPRE instrumentos autónomos. NO exijas coherencia con la prueba escrita. Solo verifica que, si pertenecen al mismo proceso, no se contradigan.
 
-REGLAS INSTITUCIONALES OBLIGATORIAS:
-1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: Las evaluaciones pueden incluir como MÁXIMO 3 Objetivos de Aprendizaje (OA).
-2. REQUISITO DE HABILIDADES: Las evaluaciones deben incluir OBLIGATORIAMENTE 3 HABILIDADES declaradas y evaluadas en el instrumento.
+REGLAS INSTITUCIONALES OBLIGATORIAS (aplican solo si la evaluación escrita está presente):
+1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: MÁXIMO 3 OA.
+2. REQUISITO DE HABILIDADES: OBLIGATORIAMENTE 3 habilidades declaradas y evaluadas.
 
 INSTRUCCIONES DE FORMATO OBLIGATORIO:
 Debes generar DOS bloques independientes usando EXACTAMENTE estos marcadores:
@@ -406,46 +289,84 @@ Debes generar DOS bloques independientes usando EXACTAMENTE estos marcadores:
 Atentamente,
 
 Equipo CIR
-===FIN_CARTA_RETROALIMENTACION===
+===FIN_CARTA_RETROALIMENTACION===`;
 
-ESTRUCTURA DEL INFORME:
-1. Identificación de los instrumentos recibidos
-2. Síntesis ejecutiva
-3. Análisis de la Tabla de Especificaciones
-4. Coherencia OA – Habilidades – Ítems (de la evaluación escrita)
-5. Auditoría ítem por ítem de la evaluación escrita (TODOS los ítems)
-6. Análisis de aprendizaje profundo en la evaluación escrita
-7. Preguntas de interpretación detectadas
-8. Preguntas de comparación detectadas
-9. Preguntas de justificación y argumentación
-10. Uso de evidencia
-11. Preguntas superficiales
-12. Reformulación de preguntas
-13. Auditoría de metacognición en la evaluación escrita
-14. Preguntas metacognitivas sugeridas
-15. Distribución de habilidades cognitivas (evaluación escrita)
-16. AUDITORÍA DE LA RÚBRICA (solo si se proporcionó)
-    - Propósito declarado y contexto de uso
-    - Estructura de la rúbrica (criterios, niveles, descriptores)
-    - Diseño de criterios (relevancia, observabilidad, alineación con OA)
-    - Descriptores de desempeño (calidad cualitativa, distinguibilidad de niveles)
-    - Lenguaje y equidad (claridad, inclusividad, accionabilidad)
-    - Nivel de exigencia cognitiva promovido por la rúbrica
-    - Promoción de metacognición y autorregulación
-    - Recomendaciones específicas
-17. AUDITORÍA DE LA ESCALA DE APRECIACIÓN (solo si se proporcionó)
-    - Propósito y tipo de escala
-    - Coherencia interna entre indicadores y niveles
-    - Claridad de los descriptores
-    - Pertinencia pedagógica
-    - Recomendaciones específicas
-18. Fortalezas generales
-19. Aspectos críticos generales
-20. Recomendaciones UTP (integradas)
-21. Conclusión técnica
+  // ============================================================
+  // GENERADOR DINÁMICO DEL PROMPT SEGÚN INSTRUMENTOS PRESENTES
+  // ============================================================
+  function construirPromptDinamico(instrumentos) {
+    const { tabla, prueba, rubrica, escala } = instrumentos;
 
-Para CADA ítem de la evaluación escrita determina:
-- OA
+    // Lista de instrumentos realmente recibidos
+    const recibidos = [];
+    if (tabla) recibidos.push('- Tabla de Especificaciones');
+    if (prueba) recibidos.push('- Evaluación / Prueba Escrita');
+    if (rubrica) recibidos.push('- Rúbrica de Evaluación');
+    if (escala) recibidos.push('- Escala de Apreciación');
+
+    const contexto = 'INSTRUMENTOS RECIBIDOS EN ESTA SOLICITUD:\n' + recibidos.join('\n');
+
+    // Construcción dinámica de la estructura del informe
+    let estructura = 'ESTRUCTURA DEL INFORME (adáptala a los instrumentos presentes):\n';
+    let sec = 1;
+
+    estructura += `${sec++}. Identificación de los instrumentos recibidos\n`;
+    estructura += `${sec++}. Síntesis ejecutiva\n`;
+
+    if (tabla) {
+      estructura += `${sec++}. Análisis de la Tabla de Especificaciones (OA, habilidades, indicadores, ítems, demanda cognitiva planificada)\n`;
+    }
+
+    if (prueba) {
+      estructura += `${sec++}. Auditoría ítem por ítem de la Evaluación Escrita (TODOS los ítems)\n`;
+      estructura += `${sec++}. Análisis de aprendizaje profundo en la Evaluación Escrita\n`;
+      estructura += `${sec++}. Preguntas de interpretación detectadas en la Evaluación Escrita\n`;
+      estructura += `${sec++}. Preguntas de comparación detectadas en la Evaluación Escrita\n`;
+      estructura += `${sec++}. Preguntas de justificación y argumentación en la Evaluación Escrita\n`;
+      estructura += `${sec++}. Uso de evidencia en la Evaluación Escrita\n`;
+      estructura += `${sec++}. Preguntas superficiales detectadas\n`;
+      estructura += `${sec++}. Reformulación de preguntas\n`;
+      estructura += `${sec++}. Auditoría de metacognición en la Evaluación Escrita\n`;
+      estructura += `${sec++}. Preguntas metacognitivas sugeridas\n`;
+      estructura += `${sec++}. Distribución de habilidades cognitivas\n`;
+    }
+
+    if (tabla && prueba) {
+      estructura += `${sec++}. Coherencia OA – Habilidades – Ítems entre Tabla y Evaluación Escrita\n`;
+    }
+
+    if (rubrica) {
+      estructura += `${sec++}. AUDITORÍA DE LA RÚBRICA (instrumento autónomo)\n`;
+      estructura += `    - Propósito declarado y contexto de uso\n`;
+      estructura += `    - Estructura (criterios, niveles, descriptores)\n`;
+      estructura += `    - Diseño de criterios (relevancia, observabilidad, alineación)\n`;
+      estructura += `    - Descriptores de desempeño (calidad cualitativa, distinguibilidad)\n`;
+      estructura += `    - Lenguaje y equidad (claridad, inclusividad, accionabilidad)\n`;
+      estructura += `    - Nivel de exigencia cognitiva promovido\n`;
+      estructura += `    - Promoción de metacognición y autorregulación\n`;
+      estructura += `    - Recomendaciones específicas\n`;
+    }
+
+    if (escala) {
+      estructura += `${sec++}. AUDITORÍA DE LA ESCALA DE APRECIACIÓN (instrumento autónomo)\n`;
+      estructura += `    - Propósito y tipo de escala\n`;
+      estructura += `    - Coherencia interna entre indicadores y niveles\n`;
+      estructura += `    - Claridad de los descriptores\n`;
+      estructura += `    - Pertinencia pedagógica\n`;
+      estructura += `    - Recomendaciones específicas\n`;
+    }
+
+    estructura += `${sec++}. Fortalezas generales\n`;
+    estructura += `${sec++}. Aspectos críticos generales\n`;
+    estructura += `${sec++}. Recomendaciones UTP (integradas)\n`;
+    estructura += `${sec++}. Conclusión técnica\n`;
+
+    // Instrucciones para ítem por ítem (solo si hay prueba escrita)
+    let instruccionesItems = '';
+    if (prueba) {
+      instruccionesItems = `
+Para CADA ítem de la Evaluación Escrita determina:
+- OA (si la Tabla está presente; si no, indícalo como "No verificable sin Tabla")
 - habilidad declarada
 - habilidad realmente movilizada
 - contenido
@@ -453,7 +374,7 @@ Para CADA ítem de la evaluación escrita determina:
 - uso de evidencia
 - nivel de aprendizaje profundo
 - presencia de metacognición
-- coherencia con la Tabla de Especificaciones
+- coherencia con la Tabla de Especificaciones (si está presente)
 - problema detectado
 - recomendación
 
@@ -462,26 +383,39 @@ Clasifica cada ítem con semáforo:
 🟡 Profundidad intermedia
 🔴 Baja profundidad
 🧠 Metacognitivo (cuando corresponda)
+`;
+    }
 
+    // Marco de calidad para instrumentos de aula
+    let marcoAula = '';
+    if (rubrica || escala) {
+      marcoAula = `
 MARCO DE CALIDAD PARA INSTRUMENTOS DE AULA (rúbrica y escala):
 Aplica estas 4 dimensiones basadas en el Rubric Quality Framework:
 1. Estructura: ¿criterios, niveles y descriptores claramente definidos?
 2. Diseño de criterios: ¿relevantes, observables, alineados con aprendizajes esperados?
 3. Descriptores de desempeño: ¿describen cualitativamente niveles o solo usan intensificadores ("muy bien", "excelente")?
 4. Lenguaje y equidad: ¿claro, accionable, inclusivo, sin sesgos?
+`;
+    }
 
+    const requisitosCarta = `
 REQUISITOS DE LA CARTA:
 La carta debe ser profesional, respetuosa, formativa, concreta, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora. Debe incluir recomendaciones sobre:
-- aprendizaje profundo
-- interpretación
-- comparación
-- justificación
-- evidencia
-- metacognición
+- aprendizaje profundo (si aplica)
+- interpretación (si aplica)
+- comparación (si aplica)
+- justificación (si aplica)
+- evidencia (si aplica)
+- metacognición (si aplica)
 - calidad de los instrumentos de aula (si se proporcionaron)
 
 La firma DEBE ser exactamente: Equipo CIR
-Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógica Experta en Evaluación", "Equipo de Asesoría".`;
+Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógica Experta en Evaluación", "Equipo de Asesoría".
+`;
+
+    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + instruccionesItems + '\n' + marcoAula + '\n' + requisitosCarta;
+  }
 
   // ============================================================
   // FUNCIÓN PRINCIPAL DE AUDITORÍA
@@ -490,28 +424,11 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     ocultarError();
     ocultarInfo();
 
-    // ============================================================
-    // AUTO-CORRECCIÓN DE CAMPOS POR NOMBRE DE ARCHIVO
-    // ============================================================
-    const correcciones = autoCorregirCampos();
-    if (correcciones && correcciones.length > 0) {
-      mostrarInfo(
-        '🔄 Se detectaron archivos en campos incorrectos y se reubicaron automáticamente según su nombre:\n\n' +
-        correcciones.map(c => `• ${c.archivo}\n   De: ${c.de}\n   A: ${c.a}`).join('\n\n') +
-        '\n\nVerifica los campos y vuelve a presionar el botón si todo está correcto.'
-      );
-    }
-
     const apiKey = document.getElementById('apiKey').value.trim();
-    const tablaInput = document.getElementById('tablaPdf');
-    const pruebaInput = document.getElementById('pruebaPdf');
-    const rubricaInput = document.getElementById('rubricaPdf');
-    const escalaInput = document.getElementById('escalaPdf');
-
-    const tablaFile = tablaInput?.files?.[0];
-    const pruebaFile = pruebaInput?.files?.[0];
-    const rubricaFile = rubricaInput?.files?.[0];
-    const escalaFile = escalaInput?.files?.[0];
+    const tablaFile = document.getElementById('tablaPdf')?.files?.[0];
+    const pruebaFile = document.getElementById('pruebaPdf')?.files?.[0];
+    const rubricaFile = document.getElementById('rubricaPdf')?.files?.[0];
+    const escalaFile = document.getElementById('escalaPdf')?.files?.[0];
 
     const statusBox = document.getElementById('statusBox');
     const loaderText = document.getElementById('loaderText');
@@ -521,52 +438,54 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     reporteContenido = '';
     cartaContenido = '';
 
-    // Validaciones
+    // ============================================================
+    // VALIDACIONES
+    // ============================================================
     if (!apiKey) {
       mostrarError('Debes ingresar tu Clave API de Gemini.');
       return;
     }
-    if (!tablaFile) {
-      mostrarError('Falta el PDF de la Tabla de Especificaciones. Cárgalo en el campo "📘 Tabla de Especificaciones".');
-      return;
-    }
-    if (!pruebaFile) {
-      mostrarError('Falta el PDF de la Evaluación Escrita. Cárgalo en el campo "📘 Evaluación o Prueba Escrita".');
-      return;
-    }
-    if (tablaFile.type !== 'application/pdf' || pruebaFile.type !== 'application/pdf') {
-      mostrarError('Los archivos de Tabla y Evaluación deben ser PDF válidos.');
-      return;
-    }
-    if (rubricaFile && rubricaFile.type !== 'application/pdf') {
-      mostrarError('El archivo de Rúbrica debe ser un PDF válido.');
-      return;
-    }
-    if (escalaFile && escalaFile.type !== 'application/pdf') {
-      mostrarError('El archivo de Escala de Apreciación debe ser un PDF válido.');
+
+    // Al menos UN instrumento debe estar cargado
+    const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
+    if (instrumentosCargados.length === 0) {
+      mostrarError('Debes cargar al menos un instrumento (Tabla, Prueba, Rúbrica o Escala). Puedes auditar de a uno o combinarlos.');
       return;
     }
 
-    // Advertencia si un archivo no tiene relación aparente con su campo
-    const advertencias = [];
-    const tipoTabla = detectarTipoInstrumento(tablaFile.name);
-    const tipoPrueba = detectarTipoInstrumento(pruebaFile.name);
-    if (tipoTabla && tipoTabla !== 'tabla') {
-      advertencias.push(`El archivo "${tablaFile.name}" parece ser de tipo "${tipoTabla}", no una Tabla de Especificaciones.`);
-    }
-    if (tipoPrueba && tipoPrueba !== 'prueba') {
-      advertencias.push(`El archivo "${pruebaFile.name}" parece ser de tipo "${tipoPrueba}", no una Evaluación/Prueba.`);
-    }
-    if (advertencias.length) {
-      mostrarInfo('ℹ️ Advertencias:\n\n• ' + advertencias.join('\n• ') + '\n\nSi estás seguro, presiona "Auditar" nuevamente para continuar.');
+    // Validación de tipo MIME para cada archivo cargado
+    const archivos = [
+      { file: tablaFile, nombre: 'Tabla de Especificaciones' },
+      { file: pruebaFile, nombre: 'Evaluación/Prueba Escrita' },
+      { file: rubricaFile, nombre: 'Rúbrica' },
+      { file: escalaFile, nombre: 'Escala de Apreciación' }
+    ];
+
+    for (const a of archivos) {
+      if (a.file && a.file.type !== 'application/pdf') {
+        mostrarError(`El archivo cargado en "${a.nombre}" no es un PDF válido (tipo: "${a.file.type || 'desconocido'}").`);
+        return;
+      }
     }
 
-    const totalSize = tablaFile.size + pruebaFile.size +
-                      (rubricaFile ? rubricaFile.size : 0) +
-                      (escalaFile ? escalaFile.size : 0);
+    const totalSize = instrumentosCargados.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 19 * 1024 * 1024) {
       mostrarError(`Los archivos PDF suman ${(totalSize / 1024 / 1024).toFixed(1)} MB y superan el límite de 19 MB.`);
       return;
+    }
+
+    // ============================================================
+    // AVISO INFORMATIVO (si solo se carga prueba sin tabla, o al revés)
+    // ============================================================
+    const avisos = [];
+    if (pruebaFile && !tablaFile) {
+      avisos.push('ℹ️ Cargaste la Evaluación Escrita sin la Tabla de Especificaciones. La auditoría se hará sin verificar coherencia cruzada.');
+    }
+    if (tablaFile && !pruebaFile) {
+      avisos.push('ℹ️ Cargaste la Tabla de Especificaciones sin la Evaluación Escrita. La auditoría se hará sobre la planificación declarada.');
+    }
+    if (avisos.length > 0) {
+      mostrarInfo(avisos.join('\n\n') + '\n\nPuedes continuar presionando "✨ Auditar instrumentos pedagógicos".');
     }
 
     document.getElementById('btnAnalizar').disabled = true;
@@ -574,50 +493,60 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     document.getElementById('results').style.display = 'none';
 
     try {
-      const totalArchivos = 2 + (rubricaFile ? 1 : 0) + (escalaFile ? 1 : 0);
       let paso = 1;
+      const totalPasos = instrumentosCargados.length + 2;
 
-      logStatus(`✅ Archivos validados: Tabla (${(tablaFile.size/1024).toFixed(0)} KB), Prueba (${(pruebaFile.size/1024).toFixed(0)} KB)${rubricaFile ? ', Rúbrica ('+(rubricaFile.size/1024).toFixed(0)+' KB)' : ''}${escalaFile ? ', Escala ('+(escalaFile.size/1024).toFixed(0)+' KB)' : ''}`);
+      let tablaB64 = null, pruebaB64 = null, rubricaB64 = null, escalaB64 = null;
 
-      logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Tabla...`);
-      loaderText.innerText = 'Leyendo Tabla de Especificaciones...';
-      const tablaB64 = await fileToBase64(tablaFile);
-      paso++;
+      if (tablaFile) {
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Tabla (${(tablaFile.size / 1024).toFixed(1)} KB)...`);
+        loaderText.innerText = 'Leyendo Tabla de Especificaciones...';
+        tablaB64 = await fileToBase64(tablaFile);
+        paso++;
+      }
 
-      logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Evaluación...`);
-      loaderText.innerText = 'Leyendo Evaluación Escrita...';
-      const pruebaB64 = await fileToBase64(pruebaFile);
-      paso++;
+      if (pruebaFile) {
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Evaluación (${(pruebaFile.size / 1024).toFixed(1)} KB)...`);
+        loaderText.innerText = 'Leyendo Evaluación Escrita...';
+        pruebaB64 = await fileToBase64(pruebaFile);
+        paso++;
+      }
 
-      let rubricaB64 = null;
       if (rubricaFile) {
-        logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Rúbrica...`);
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Rúbrica (${(rubricaFile.size / 1024).toFixed(1)} KB)...`);
         loaderText.innerText = 'Leyendo Rúbrica...';
         rubricaB64 = await fileToBase64(rubricaFile);
         paso++;
-      } else {
-        logStatus(`[--] Rúbrica no proporcionada. Omitiendo.`);
       }
 
-      let escalaB64 = null;
       if (escalaFile) {
-        logStatus(`[${paso}/${totalArchivos + 2}] Convirtiendo Escala...`);
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Escala (${(escalaFile.size / 1024).toFixed(1)} KB)...`);
         loaderText.innerText = 'Leyendo Escala de Apreciación...';
         escalaB64 = await fileToBase64(escalaFile);
         paso++;
-      } else {
-        logStatus(`[--] Escala de Apreciación no proporcionada. Omitiendo.`);
       }
 
-      logStatus(`[${totalArchivos + 2}/${totalArchivos + 2}] Conectando con Google Gemini...`);
+      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Google Gemini...`);
 
-      const instrumentosIncluidos = [
-        '- Tabla de Especificaciones (obligatoria)',
-        '- Evaluación Escrita (obligatoria)',
-        rubricaB64 ? '- Rúbrica de Evaluación (instrumento independiente de aula) INCLUIDA' : '- Rúbrica de Evaluación: NO proporcionada (omite su sección de auditoría)',
-        escalaB64 ? '- Escala de Apreciación (instrumento independiente de aula) INCLUIDA' : '- Escala de Apreciación: NO proporcionada (omite su sección de auditoría)'
-      ];
-      const contextoArchivos = 'INSTRUMENTOS RECIBIDOS EN ESTA SOLICITUD:\n' + instrumentosIncluidos.join('\n');
+      // ============================================================
+      // PROMPT DINÁMICO
+      // ============================================================
+      const promptFinal = construirPromptDinamico({
+        tabla: !!tablaB64,
+        prueba: !!pruebaB64,
+        rubrica: !!rubricaB64,
+        escala: !!escalaB64
+      });
+
+      // ============================================================
+      // CONSTRUCCIÓN DEL BODY CON SOLO LOS PDFs PRESENTES
+      // ============================================================
+      const parts = [{ text: promptFinal + "\n\nRealiza la auditoría pedagógica completa sobre los instrumentos adjuntos. Genera los dos bloques (informe y carta) con los marcadores exactos." }];
+
+      if (tablaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: tablaB64 } });
+      if (pruebaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: pruebaB64 } });
+      if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
+      if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
       const modelos = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
       let data = null;
@@ -641,15 +570,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
             let response;
             let json = {};
-
-            const parts = [
-              { text: SYSTEM_INSTRUCTIONS + "\n\n" + contextoArchivos + "\n\nRealiza la auditoría pedagógica completa. Analiza la Tabla y la Evaluación Escrita de forma cruzada. " + (rubricaB64 ? "Audita la Rúbrica como instrumento independiente de aula. " : "") + (escalaB64 ? "Audita la Escala de Apreciación como instrumento independiente de aula. " : "") + "Genera los dos bloques (informe y carta) con los marcadores exactos." },
-              { inlineData: { mimeType: "application/pdf", data: tablaB64 } },
-              { inlineData: { mimeType: "application/pdf", data: pruebaB64 } }
-            ];
-
-            if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
-            if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
             try {
               response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -733,8 +653,8 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       logStatus('\n📄 Generando informe final...');
       loaderText.innerText = 'Renderizando informe...';
 
-      const partes = data?.candidates?.[0]?.content?.parts || [];
-      const textoResultado = partes
+      const partesResp = data?.candidates?.[0]?.content?.parts || [];
+      const textoResultado = partesResp
         .filter(p => typeof p.text === 'string')
         .map(p => p.text)
         .join('\n')
@@ -783,7 +703,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
             body: JSON.stringify({
               contents: [{
                 parts: [
-                  { text: 'Genera únicamente una carta de retroalimentación formativa profesional para el docente, basada en el siguiente informe de auditoría pedagógica:\n\n' + reporteContenido + '\n\nLa carta debe ser respetuosa, formativa, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora en aprendizaje profundo, interpretación, comparación, justificación, evidencia, metacognición y calidad de instrumentos de aula. Termina exactamente con:\n\nAtentamente,\n\nEquipo CIR' }
+                  { text: 'Genera únicamente una carta de retroalimentación formativa profesional para el docente, basada en el siguiente informe de auditoría pedagógica:\n\n' + reporteContenido + '\n\nLa carta debe ser respetuosa, formativa, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora. Termina exactamente con:\n\nAtentamente,\n\nEquipo CIR' }
                 ]
               }],
               generationConfig: {
