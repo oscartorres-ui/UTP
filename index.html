@@ -99,6 +99,37 @@
     #reporteContenido table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.85rem; }
     #reporteContenido th, #reporteContenido td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
     #reporteContenido th { background-color: #f7fafc; color: #2d3748; }
+
+    /* Separador visual entre informe y carta */
+    .separador-documentos {
+      margin: 40px 0 30px 0;
+      border: none;
+      border-top: 3px dashed #c4b5fd;
+      position: relative;
+    }
+    .separador-documentos::after {
+      content: "📄 CARTA DE RETROALIMENTACIÓN";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      padding: 0 15px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .carta-bloque {
+      background: #f0fdff;
+      border-left: 4px solid var(--accent);
+      padding: 20px 24px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      line-height: 1.8;
+      font-size: 0.95rem;
+    }
   </style>
 </head>
 <body>
@@ -172,10 +203,10 @@
   <div id="results">
     <div class="action-bar">
       <button class="btn-download report" onclick="descargarInformePDF()">
-        📥 Descargar Informe Técnico-Pedagógico PDF
+        📥 Descargar Informe + Carta PDF
       </button>
       <button class="btn-download letter" onclick="descargarCartaPDF()">
-        📄 Descargar Carta de Retroalimentación PDF
+        📄 Descargar Solo Carta PDF
       </button>
     </div>
     <div id="reporteContenido"></div>
@@ -297,7 +328,6 @@ Equipo CIR
   function construirPromptDinamico(instrumentos) {
     const { tabla, prueba, rubrica, escala } = instrumentos;
 
-    // Lista de instrumentos realmente recibidos
     const recibidos = [];
     if (tabla) recibidos.push('- Tabla de Especificaciones');
     if (prueba) recibidos.push('- Evaluación / Prueba Escrita');
@@ -306,7 +336,6 @@ Equipo CIR
 
     const contexto = 'INSTRUMENTOS RECIBIDOS EN ESTA SOLICITUD:\n' + recibidos.join('\n');
 
-    // Construcción dinámica de la estructura del informe
     let estructura = 'ESTRUCTURA DEL INFORME (adáptala a los instrumentos presentes):\n';
     let sec = 1;
 
@@ -361,7 +390,6 @@ Equipo CIR
     estructura += `${sec++}. Recomendaciones UTP (integradas)\n`;
     estructura += `${sec++}. Conclusión técnica\n`;
 
-    // Instrucciones para ítem por ítem (solo si hay prueba escrita)
     let instruccionesItems = '';
     if (prueba) {
       instruccionesItems = `
@@ -386,7 +414,6 @@ Clasifica cada ítem con semáforo:
 `;
     }
 
-    // Marco de calidad para instrumentos de aula
     let marcoAula = '';
     if (rubrica || escala) {
       marcoAula = `
@@ -438,22 +465,17 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     reporteContenido = '';
     cartaContenido = '';
 
-    // ============================================================
-    // VALIDACIONES
-    // ============================================================
     if (!apiKey) {
       mostrarError('Debes ingresar tu Clave API de Gemini.');
       return;
     }
 
-    // Al menos UN instrumento debe estar cargado
     const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
     if (instrumentosCargados.length === 0) {
-      mostrarError('Debes cargar al menos un instrumento (Tabla, Prueba, Rúbrica o Escala). Puedes auditar de a uno o combinarlos.');
+      mostrarError('Debes cargar al menos un instrumento (Tabla, Prueba, Rúbrica o Escala).');
       return;
     }
 
-    // Validación de tipo MIME para cada archivo cargado
     const archivos = [
       { file: tablaFile, nombre: 'Tabla de Especificaciones' },
       { file: pruebaFile, nombre: 'Evaluación/Prueba Escrita' },
@@ -474,9 +496,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       return;
     }
 
-    // ============================================================
-    // AVISO INFORMATIVO (si solo se carga prueba sin tabla, o al revés)
-    // ============================================================
     const avisos = [];
     if (pruebaFile && !tablaFile) {
       avisos.push('ℹ️ Cargaste la Evaluación Escrita sin la Tabla de Especificaciones. La auditoría se hará sin verificar coherencia cruzada.');
@@ -528,9 +547,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
       logStatus(`[${totalPasos}/${totalPasos}] Conectando con Google Gemini...`);
 
-      // ============================================================
-      // PROMPT DINÁMICO
-      // ============================================================
       const promptFinal = construirPromptDinamico({
         tabla: !!tablaB64,
         prueba: !!pruebaB64,
@@ -538,9 +554,6 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         escala: !!escalaB64
       });
 
-      // ============================================================
-      // CONSTRUCCIÓN DEL BODY CON SOLO LOS PDFs PRESENTES
-      // ============================================================
       const parts = [{ text: promptFinal + "\n\nRealiza la auditoría pedagógica completa sobre los instrumentos adjuntos. Genera los dos bloques (informe y carta) con los marcadores exactos." }];
 
       if (tablaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: tablaB64 } });
@@ -732,12 +745,25 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         }
       }
 
+      // ============================================================
+      // RENDERIZADO EN PANTALLA: INFORME + CARTA JUNTOS
+      // ============================================================
+      let htmlCompleto = '';
       if (window.marked) {
-        document.getElementById('reporteContenido').innerHTML = marked.parse(reporteContenido);
+        htmlCompleto = marked.parse(reporteContenido);
       } else {
-        document.getElementById('reporteContenido').innerText = reporteContenido;
+        htmlCompleto = '<pre>' + reporteContenido + '</pre>';
       }
 
+      // Añadir la carta al final del informe, con separador visual
+      if (cartaContenido && cartaContenido.trim()) {
+        const cartaHTML = '<div class="carta-bloque">' +
+          cartaContenido.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+          '</div>';
+        htmlCompleto += '<hr class="separador-documentos">' + cartaHTML;
+      }
+
+      document.getElementById('reporteContenido').innerHTML = htmlCompleto;
       document.getElementById('results').style.display = 'block';
       logStatus('✅ Proceso completado exitosamente.');
 
@@ -768,6 +794,13 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
   // ============================================================
   // DESCARGA DE PDFs
   // ============================================================
+
+  /**
+   * Descarga el informe técnico COMPLETO, que incluye:
+   *   1. El informe técnico-pedagógico.
+   *   2. Separador visual.
+   *   3. La carta de retroalimentación.
+   */
   function descargarInformePDF() {
     if (!reporteContenido || !reporteContenido.trim()) {
       mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
@@ -779,8 +812,26 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     contenedor.style.fontFamily = "'Segoe UI', system-ui, sans-serif";
     contenedor.style.color = '#1e293b';
     contenedor.style.lineHeight = '1.6';
-    
-    contenedor.innerHTML = window.marked ? marked.parse(reporteContenido) : reporteContenido;
+
+    // Render del informe
+    let htmlInforme = window.marked ? marked.parse(reporteContenido) : '<pre>' + reporteContenido + '</pre>';
+
+    // Añadir la carta al final si existe
+    if (cartaContenido && cartaContenido.trim()) {
+      const cartaConFormato = cartaContenido
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      htmlInforme +=
+        '<div style="margin-top: 50px; padding-top: 20px; border-top: 3px dashed #c4b5fd;">' +
+        '<h1 style="color: #6b21a8; text-align: center; font-size: 1.2rem; margin-bottom: 24px;">📄 CARTA DE RETROALIMENTACIÓN</h1>' +
+        '<div style="white-space: pre-wrap; line-height: 1.8; padding: 20px; background: #f0fdff; border-left: 4px solid #00c4cc; border-radius: 8px;">' +
+        cartaConFormato +
+        '</div>' +
+        '</div>';
+    }
+
+    contenedor.innerHTML = htmlInforme;
 
     const opciones = {
       margin:       [12, 12, 12, 12],
@@ -793,6 +844,9 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     html2pdf().set(opciones).from(contenedor).save();
   }
 
+  /**
+   * Descarga SOLO la carta de retroalimentación como PDF independiente.
+   */
   function descargarCartaPDF() {
     if (!cartaContenido || !cartaContenido.trim()) {
       mostrarError('No hay carta de retroalimentación disponible para descargar. Ejecuta primero la auditoría.');
