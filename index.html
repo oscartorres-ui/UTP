@@ -11,6 +11,13 @@
   <!-- Generador de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+  <!-- Motor de PDF con paginación de texto -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Google Picker + Google Identity Services para guardar en Drive -->
+  <script async defer src="https://apis.google.com/js/api.js"></script>
+  <script async defer src="https://accounts.google.com/gsi/client"></script>
+
   <style>
     :root {
       --primary: #6b21a8;
@@ -94,6 +101,9 @@
     .btn-download.report:hover { background: #15803d; }
     .btn-download.letter { background: #0284c7; }
     .btn-download.letter:hover { background: #0369a1; }
+    .btn-download.drive { background: #f59e0b; color: #111827; }
+    .btn-download.drive:hover { background: #d97706; }
+    .drive-help { width: 100%; margin: -8px 0 0; color: #64748b; font-size: 0.78rem; text-align: right; }
     
     #reporteContenido { line-height: 1.6; color: #1e293b; }
     #reporteContenido h1, #reporteContenido h2, #reporteContenido h3 { color: #6b21a8; margin-top: 20px; }
@@ -228,6 +238,13 @@
       <button class="btn-download letter" onclick="descargarCartaPDF()">
         📄 Descargar Solo Carta PDF
       </button>
+      <button class="btn-download drive" onclick="guardarInformeEnDrive()">
+        ☁️ Guardar Informe + Carta en Drive
+      </button>
+      <button class="btn-download drive" onclick="guardarCartaEnDrive()">
+        ☁️ Guardar Solo Carta en Drive
+      </button>
+      <div class="drive-help">Al guardar, Google abrirá una ventana para elegir la carpeta de destino.</div>
     </div>
     <div id="reporteContenido"></div>
   </div>
@@ -239,6 +256,23 @@
   // ============================================================
   let reporteContenido = '';
   let cartaContenido = '';
+
+  // ============================================================
+  // CONFIGURACIÓN DE GOOGLE DRIVE
+  // ============================================================
+  // Reemplaza estos tres valores por los de tu proyecto de Google Cloud.
+  // No uses aquí el Client Secret: en una aplicación web nunca debe exponerse.
+  const GOOGLE_DRIVE_CONFIG = Object.freeze({
+    clientId: 'REEMPLAZA_CON_TU_CLIENT_ID.apps.googleusercontent.com',
+    apiKey: 'REEMPLAZA_CON_TU_API_KEY_DE_GOOGLE_CLOUD',
+    appId: 'REEMPLAZA_CON_EL_NUMERO_DE_TU_PROYECTO'
+  });
+
+  const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  let driveAccessToken = null;
+  let driveTokenClient = null;
+  let drivePickerListo = false;
+  let driveInicializacion = null;
 
   // ============================================================
   // UTILIDADES DE UI
@@ -707,9 +741,20 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
             }
 
             // ============================================================
+            // CUOTA AGOTADA: no reintentar porque cada intento consume
+            // tiempo y la cuota diaria no se recupera inmediatamente.
+            // ============================================================
+            const esCuotaAgotada = /quota exceeded|free_tier_requests|daily limit|limit: \d+.*per day|retry in/i.test(errDetail);
+            if (esCuotaAgotada) {
+              errorFatal = `CUOTA_AGOTADA: Se alcanzó la cuota gratuita de Gemini para este proyecto.\n\nGoogle indica que podrás volver a intentarlo aproximadamente en el tiempo señalado por la API. También puedes revisar el consumo y los límites en:\nhttps://ai.dev/rate-limit\n\nDetalle de Google: ${errDetail}`;
+              logStatus(`❌ ${model}: cuota diaria agotada. Deteniendo reintentos.`);
+              break;
+            }
+
+            // ============================================================
             // ERRORES TRANSITORIOS (reintentables con backoff)
             // ============================================================
-            const esTransitorio = status === 503 || status === 429 || status === 502;
+            const esTransitorio = status === 503 || status === 502;
 
             if (esTransitorio && intento < MAX_INTENTOS) {
               const delayBase = Math.pow(2, intento) * 1000;
@@ -867,7 +912,9 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       // ============================================================
       // CLASIFICACIÓN DE ERRORES ESPECÍFICOS
       // ============================================================
-      if (detalle.startsWith('API_KEY_INVALIDA:')) {
+      if (detalle.startsWith('CUOTA_AGOTADA:')) {
+        detalle = '⏳ ' + detalle.replace('CUOTA_AGOTADA: ', '');
+      } else if (detalle.startsWith('API_KEY_INVALIDA:')) {
         detalle = '🔑 ' + detalle.replace('API_KEY_INVALIDA: ', '');
       } else if (detalle.startsWith('PERMISO_DENEGADO:')) {
         detalle = '🚫 ' + detalle.replace('PERMISO_DENEGADO: ', '');
@@ -940,6 +987,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         line-height: 1.45;
         overflow-wrap: anywhere;
         word-wrap: break-word;
+        overflow: visible !important;
       }
 
       .pdf-document h1,
@@ -951,6 +999,8 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
         margin: 16px 0 8px;
         page-break-after: avoid;
         break-after: avoid-page;
+        page-break-inside: avoid;
+        break-inside: avoid;
       }
 
       .pdf-document h1:first-child,
@@ -1106,17 +1156,275 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       },
       pagebreak: {
         mode: ['css', 'legacy'],
-        avoid: ['h1', 'h2', 'h3', 'h4', 'p', 'li', 'tr', '.carta-bloque']
+        avoid: ['h1', 'h2', 'h3', 'h4', 'tr', '.carta-bloque']
       }
     };
   }
 
+  // Exportación con jsPDF.html(): usa paginación de texto en vez de cortar
+  // una imagen grande. Esto evita cortes de líneas y mejora los saltos de página.
+  function renderizarPDFConTexto(contenedor, nombreArchivo, devolverBlob = false) {
+    return new Promise((resolve, reject) => {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error('No se pudo cargar el motor de PDF. Recarga la página e inténtalo nuevamente.');
+        }
+
+        const { jsPDF } = window.jspdf;
+        const documento = new jsPDF({
+          unit: 'mm',
+          format: 'letter',
+          orientation: 'portrait',
+          compress: true
+        });
+
+        documento.html(contenedor, {
+          x: PDF_CARTA.margen,
+          y: PDF_CARTA.margen,
+          width: PDF_CARTA.anchoContenido,
+          windowWidth: 794,
+          autoPaging: 'text',
+          margin: [PDF_CARTA.margen, PDF_CARTA.margen, PDF_CARTA.margen, PDF_CARTA.margen],
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: 794
+          },
+          callback: () => {
+            try {
+              const resultado = devolverBlob
+                ? documento.output('blob')
+                : documento.save(nombreArchivo);
+              resolve(resultado);
+            } catch (error) {
+              reject(error);
+            }
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   async function guardarPDF(contenedor, opciones) {
     try {
-      await html2pdf().set(opciones).from(contenedor).save();
+      await renderizarPDFConTexto(contenedor, opciones.filename, false);
     } finally {
       contenedor.remove();
     }
+  }
+
+  function validarConfiguracionDrive() {
+    const valores = Object.values(GOOGLE_DRIVE_CONFIG);
+    if (valores.some(v => !v || v.startsWith('REEMPLAZA_CON_'))) {
+      throw new Error(
+        'Primero configura GOOGLE_DRIVE_CONFIG con tu Client ID, API Key y número de proyecto de Google Cloud.'
+      );
+    }
+  }
+
+  function esperarCondicionDrive(condicion, timeout = 15000) {
+    return new Promise((resolve, reject) => {
+      const inicio = Date.now();
+      const revisar = () => {
+        if (condicion()) return resolve();
+        if (Date.now() - inicio > timeout) {
+          return reject(new Error('No se pudieron cargar las librerías de Google Drive. Recarga la página e inténtalo nuevamente.'));
+        }
+        setTimeout(revisar, 100);
+      };
+      revisar();
+    });
+  }
+
+  async function inicializarGoogleDrive() {
+    validarConfiguracionDrive();
+    if (driveInicializacion) return driveInicializacion;
+
+    driveInicializacion = (async () => {
+      await esperarCondicionDrive(() =>
+        window.google && window.google.accounts && window.google.accounts.oauth2 && window.gapi
+      );
+
+      if (!drivePickerListo) {
+        await new Promise((resolve, reject) => {
+          window.gapi.load('picker', {
+            callback: resolve,
+            onerror: () => reject(new Error('No se pudo cargar Google Picker.'))
+          });
+        });
+        drivePickerListo = true;
+      }
+
+      driveTokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_DRIVE_CONFIG.clientId,
+        scope: GOOGLE_DRIVE_SCOPE,
+        callback: () => {}
+      });
+    })();
+
+    try {
+      await driveInicializacion;
+    } catch (error) {
+      driveInicializacion = null;
+      throw error;
+    }
+  }
+
+  async function obtenerTokenDrive() {
+    await inicializarGoogleDrive();
+
+    return new Promise((resolve, reject) => {
+      driveTokenClient.callback = (respuesta) => {
+        if (respuesta && respuesta.access_token) {
+          driveAccessToken = respuesta.access_token;
+          resolve(driveAccessToken);
+        } else {
+          reject(new Error(respuesta?.error_description || 'Google no entregó un permiso de acceso a Drive.'));
+        }
+      };
+
+      driveTokenClient.requestAccessToken({
+        prompt: driveAccessToken ? '' : 'consent'
+      });
+    });
+  }
+
+  function seleccionarCarpetaDrive() {
+    return new Promise((resolve, reject) => {
+      const vistaCarpetas = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true);
+
+      const picker = new google.picker.PickerBuilder()
+        .addView(vistaCarpetas)
+        .setOAuthToken(driveAccessToken)
+        .setDeveloperKey(GOOGLE_DRIVE_CONFIG.apiKey)
+        .setAppId(GOOGLE_DRIVE_CONFIG.appId)
+        .setCallback((datos) => {
+          const accion = datos[google.picker.Response.ACTION];
+          if (accion === google.picker.Action.PICKED) {
+            const documentos = datos[google.picker.Response.DOCUMENTS] || [];
+            const carpeta = documentos[0];
+            if (carpeta?.id) {
+              resolve({ id: carpeta.id, nombre: carpeta.name || 'Carpeta seleccionada' });
+            } else {
+              reject(new Error('No se pudo identificar la carpeta seleccionada.'));
+            }
+          } else if (accion === google.picker.Action.CANCEL) {
+            reject(new Error('Selección cancelada por el usuario.'));
+          }
+        })
+        .build();
+
+      picker.setVisible(true);
+    });
+  }
+
+  async function subirPDFaDrive(blob, nombreArchivo, carpeta) {
+    const metadata = {
+      name: nombreArchivo,
+      mimeType: 'application/pdf',
+      parents: [carpeta.id]
+    };
+    const boundary = 'drive_pdf_boundary_' + Date.now();
+    const cuerpo = new Blob([
+      `--${boundary}\r\n`,
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+      JSON.stringify(metadata),
+      `\r\n--${boundary}\r\n`,
+      'Content-Type: application/pdf\r\n\r\n',
+      blob,
+      `\r\n--${boundary}--`
+    ], { type: `multipart/related; boundary=${boundary}` });
+
+    const respuesta = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${driveAccessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: cuerpo
+      }
+    );
+
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text();
+      throw new Error(`Drive rechazó el archivo (${respuesta.status}). ${detalle}`);
+    }
+    return respuesta.json();
+  }
+
+  async function generarBlobPDF(contenedor, opciones) {
+    try {
+      return await renderizarPDFConTexto(contenedor, opciones.filename, true);
+    } finally {
+      contenedor.remove();
+    }
+  }
+
+  async function guardarDocumentoEnDrive(tipo) {
+    try {
+      const esCarta = tipo === 'carta';
+      if (esCarta && (!cartaContenido || !cartaContenido.trim())) {
+        throw new Error('No hay carta de retroalimentación disponible. Ejecuta primero la auditoría.');
+      }
+      if (!esCarta && (!reporteContenido || !reporteContenido.trim())) {
+        throw new Error('No hay informe técnico disponible. Ejecuta primero la auditoría.');
+      }
+
+      const token = await obtenerTokenDrive();
+      driveAccessToken = token;
+      const carpeta = await seleccionarCarpetaDrive();
+
+      let html;
+      let nombre;
+      if (esCarta) {
+        const texto = limpiarEmojis(cartaContenido);
+        const cartaHTML = window.marked
+          ? marked.parse(texto)
+          : '<p>' + texto.replace(/\n/g, '<br>').replace(/</g, '&lt;') + '</p>';
+        html = '<h1 class="titulo-carta">CARTA DE RETROALIMENTACIÓN</h1>' +
+          '<div class="carta-bloque">' + cartaHTML + '</div>';
+        nombre = generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR');
+      } else {
+        const informe = limpiarEmojis(reporteContenido);
+        const carta = limpiarEmojis(cartaContenido);
+        html = window.marked ? marked.parse(informe) : '<pre>' + informe + '</pre>';
+        if (carta.trim()) {
+          const cartaHTML = window.marked ? marked.parse(carta) : '<p>' + carta.replace(/\n/g, '<br>') + '</p>';
+          html += '<div class="separador-documentos"></div>' +
+            '<h1 class="titulo-carta">CARTA DE RETROALIMENTACIÓN</h1>' +
+            '<div class="carta-bloque">' + cartaHTML + '</div>';
+        }
+        nombre = generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP');
+      }
+
+      const contenedor = crearContenedorPDF(html);
+      const blob = await generarBlobPDF(contenedor, opcionesPDF(nombre));
+      const archivo = await subirPDFaDrive(blob, nombre, carpeta);
+      const enlace = archivo.webViewLink || `https://drive.google.com/open?id=${archivo.id}`;
+      mostrarInfo(`✅ PDF guardado en la carpeta «${carpeta.nombre}» de Google Drive.\n\nAbrir archivo: ${enlace}`);
+    } catch (error) {
+      if (!/cancelada por el usuario/i.test(error.message || '')) {
+        mostrarError(error.message || 'No se pudo guardar el PDF en Google Drive.');
+      }
+    }
+  }
+
+  function guardarInformeEnDrive() {
+    return guardarDocumentoEnDrive('informe');
+  }
+
+  function guardarCartaEnDrive() {
+    return guardarDocumentoEnDrive('carta');
   }
 
   async function descargarInformePDF() {
