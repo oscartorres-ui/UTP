@@ -446,7 +446,7 @@ La firma DEBE ser exactamente: Equipo CIR
         paso++;
       }
 
-      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Zhipu AI...`);
+      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Zhipu AI a través de tu Proxy...`);
       loaderText.innerText = 'Consultando IA...';
 
       const fechaHoy = getFechaActual();
@@ -462,44 +462,27 @@ La firma DEBE ser exactamente: Equipo CIR
 
       const mensajeUsuario = `Documentos:\n${documentosTexto}\n\nGenera los dos bloques (informe y carta) con los marcadores exactos.`;
 
-      // USAMOS Z.AI CON DOBLE PROXY DE RESPALDO
+      // CONEXIÓN CON TU PROXY DE CLOUDFLARE WORKERS
+      const MI_PROXY_URL = 'https://broken-paper-13b3proxy-utp.oscar-torres-4fc.workers.dev';
       const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
-      let response;
+      const urlFinal = `${MI_PROXY_URL}?url=${encodeURIComponent(urlDestino)}`;
 
-      // Intento 1: corsproxy.io
-      try {
-        logStatus('Intentando conexión (Proxy 1)...');
-        response = await fetch('https://corsproxy.io/?' + encodeURIComponent(urlDestino), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: 'glm-4-flash',
-            messages: [
-              { role: 'system', content: promptFinal },
-              { role: 'user', content: mensajeUsuario }
-            ],
-            temperature: 0.2,
-            max_tokens: 8192
-          })
-        });
-        if (!response.ok && response.status !== 200) throw new Error('Fallo Proxy 1');
-      } catch (e) {
-        // Intento 2: allorigins.win
-        logStatus('Proxy 1 falló. Intentando conexión (Proxy 2)...');
-        response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(urlDestino), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: 'glm-4-flash',
-            messages: [
-              { role: 'system', content: promptFinal },
-              { role: 'user', content: mensajeUsuario }
-            ],
-            temperature: 0.2,
-            max_tokens: 8192
-          })
-        });
-      }
+      const response = await fetch(urlFinal, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'glm-4-flash',
+          messages: [
+            { role: 'system', content: promptFinal },
+            { role: 'user', content: mensajeUsuario }
+          ],
+          temperature: 0.2,
+          max_tokens: 8192
+        })
+      });
 
       if (!response.ok) {
         const errorJson = await response.json().catch(() => ({}));
