@@ -256,7 +256,11 @@
   function ocultarInfo() {
     document.getElementById('infoBox').style.display = 'none';
   }
-
+// Función para obtener la fecha actual en español
+function getFechaActual() {
+  const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
+  return new Date().toLocaleDateString('es-CL', opciones);
+}
   // ============================================================
   // CONVERSIÓN DE ARCHIVOS A BASE64
   // ============================================================
@@ -327,7 +331,7 @@ Equipo CIR
   // ============================================================
   // GENERADOR DINÁMICO DEL PROMPT SEGÚN INSTRUMENTOS PRESENTES
   // ============================================================
-  function construirPromptDinamico(instrumentos) {
+ function construirPromptDinamico(instrumentos, fechaHoy) { 
     const { tabla, prueba, rubrica, escala } = instrumentos;
 
     const recibidos = [];
@@ -430,6 +434,7 @@ Aplica estas 4 dimensiones basadas en el Rubric Quality Framework:
 
     const requisitosCarta = `
 REQUISITOS DE LA CARTA:
+La carta debe incluir la fecha exacta proporcionada: ${fechaHoy}.
 La carta debe ser profesional, respetuosa, formativa, concreta, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora. Debe incluir recomendaciones sobre:
 - aprendizaje profundo (si aplica)
 - interpretación (si aplica)
@@ -549,12 +554,14 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
       logStatus(`[${totalPasos}/${totalPasos}] Conectando con Google Gemini...`);
 
+           const fechaHoy = getFechaActual();
+      
       const promptFinal = construirPromptDinamico({
         tabla: !!tablaB64,
         prueba: !!pruebaB64,
         rubrica: !!rubricaB64,
         escala: !!escalaB64
-      });
+      }, fechaHoy);
 
       const parts = [{ text: promptFinal + "\n\nRealiza la auditoría pedagógica completa sobre los instrumentos adjuntos. Genera los dos bloques (informe y carta) con los marcadores exactos." }];
 
@@ -855,6 +862,21 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
    *   2. Separador visual.
    *   3. La carta de retroalimentación.
    */
+    // Función auxiliar para inyectar CSS que evita que se corten las letras en el PDF
+  function inyectarEstilosPDF(contenedor) {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      * { box-sizing: border-box; }
+      body { font-family: 'Arial', sans-serif; color: #1e293b; }
+      table { width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-bottom: 15px; }
+      th, td { padding: 8px; border: 1px solid #ddd; word-wrap: break-word; font-size: 11px; }
+      h1, h2, h3, h4 { page-break-after: avoid; color: #6b21a8; margin-top: 15px; margin-bottom: 10px; }
+      p, li { word-wrap: break-word; font-size: 12px; line-height: 1.5; margin-bottom: 10px; }
+      pre { white-space: pre-wrap; word-wrap: break-word; }
+    `;
+    contenedor.appendChild(style);
+  }
+
   function descargarInformePDF() {
     if (!reporteContenido || !reporteContenido.trim()) {
       mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
@@ -862,23 +884,27 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     }
 
     const contenedor = document.createElement('div');
-    contenedor.style.padding = '20px';
-    contenedor.style.fontFamily = "'Segoe UI', system-ui, sans-serif";
-    contenedor.style.color = '#1e293b';
-    contenedor.style.lineHeight = '1.6';
+    contenedor.style.padding = '10px';
+    contenedor.style.width = '100%';
+    contenedor.style.maxWidth = '800px';
+    contenedor.style.margin = '0 auto';
+    contenedor.style.backgroundColor = '#ffffff';
 
+    inyectarEstilosPDF(contenedor);
+
+    // 1. Procesar el Informe con Markdown
     let htmlInforme = window.marked ? marked.parse(reporteContenido) : '<pre>' + reporteContenido + '</pre>';
 
+    // 2. Procesar la Carta con Markdown (AQUÍ ESTÁ LA MAGIA)
     if (cartaContenido && cartaContenido.trim()) {
-      const cartaConFormato = cartaContenido
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+      // Convertimos los asteriscos y numerales en etiquetas HTML reales
+      const cartaHTML = window.marked ? marked.parse(cartaContenido) : '<pre>' + cartaContenido + '</pre>';
+      
       htmlInforme +=
-        '<div style="margin-top: 50px; padding-top: 20px; border-top: 3px dashed #c4b5fd;">' +
-        '<h1 style="color: #6b21a8; text-align: center; font-size: 1.2rem; margin-bottom: 24px;">📄 CARTA DE RETROALIMENTACIÓN</h1>' +
-        '<div style="white-space: pre-wrap; line-height: 1.8; padding: 20px; background: #f0fdff; border-left: 4px solid #00c4cc; border-radius: 8px;">' +
-        cartaConFormato +
+        '<div style="margin-top: 40px; padding-top: 20px; border-top: 3px dashed #c4b5fd; page-break-before: always;">' +
+        '<h1 style="text-align: center; font-size: 1.2rem; margin-bottom: 24px;">📄 CARTA DE RETROALIMENTACIÓN</h1>' +
+        '<div style="line-height: 1.8; padding: 20px; background: #f0fdff; border-left: 4px solid #00c4cc; border-radius: 8px; font-size: 12px;">' +
+        cartaHTML +
         '</div>' +
         '</div>';
     }
@@ -886,11 +912,12 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
     contenedor.innerHTML = htmlInforme;
 
     const opciones = {
-      margin:       [12, 12, 12, 12],
+      margin:       [15, 15, 15, 15],
       filename:     'Informe_Auditoria_Pedagogica_UTP.pdf',
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] } 
     };
 
     html2pdf().set(opciones).from(contenedor).save();
@@ -907,15 +934,20 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
     const contenedor = document.createElement('div');
     contenedor.style.padding = '20px';
-    contenedor.style.fontFamily = "'Segoe UI', system-ui, sans-serif";
-    contenedor.style.color = '#1e293b';
-    contenedor.style.lineHeight = '1.8';
-    contenedor.style.whiteSpace = 'pre-wrap';
+    contenedor.style.width = '100%';
+    contenedor.style.maxWidth = '800px';
+    contenedor.style.margin = '0 auto';
+    contenedor.style.backgroundColor = '#ffffff';
     
-    contenedor.textContent = cartaContenido;
+    inyectarEstilosPDF(contenedor);
+    
+    // Procesar la carta con Markdown para quitar los asteriscos y dar formato
+    const cartaHTML = window.marked ? marked.parse(cartaContenido) : cartaContenido.replace(/\n/g, '<br>');
+    
+    contenedor.innerHTML = `<div style="line-height: 1.8; font-size: 13px;">${cartaHTML}</div>`;
 
     const opciones = {
-      margin:       [12, 12, 12, 12],
+      margin:       [20, 20, 20, 20],
       filename:     'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
