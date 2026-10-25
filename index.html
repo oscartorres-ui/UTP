@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Auditor Pedagógico UTP - Colegio Isabel Riquelme</title>
   
-  <!-- Renderizador de Markdown -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Renderizador de Markdown (Versión fijada) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   
   <!-- Generador de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -219,15 +219,9 @@
 </div>
 
 <script>
-  // ============================================================
-  // VARIABLES GLOBALES
-  // ============================================================
   let reporteContenido = '';
   let cartaContenido = '';
 
-  // ============================================================
-  // UTILIDADES DE UI
-  // ============================================================
   function togglePasswordVisibility(id) {
     const input = document.getElementById(id);
     if (input) {
@@ -269,11 +263,13 @@
   }
 
   // ============================================================
-  // EXTRACCIÓN DE TEXTO DE PDFs CON PDF.JS
+  // EXTRACCIÓN DE TEXTO DE PDFs CON PDF.JS (CORREGIDO)
   // ============================================================
   async function extraerTextoDePDF(file) {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    // Conversión segura a Uint8Array para compatibilidad con PDF.js
+    const typedArray = new Uint8Array(arrayBuffer);
+    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
     let textoCompleto = '';
     
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -286,9 +282,6 @@
     return textoCompleto.trim();
   }
 
-  // ============================================================
-  // INSTRUCCIONES DEL SISTEMA (PROMPT)
-  // ============================================================
   const SYSTEM_INSTRUCTIONS_BASE = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar instrumentos de evaluación para la UTP del Colegio Isabel Riquelme y generar un informe de revisión técnica junto con una carta de retroalimentación formativa para el docente.
 
 TIPOS DE INSTRUMENTOS:
@@ -377,7 +370,7 @@ La firma DEBE ser exactamente: Equipo CIR
   }
 
   // ============================================================
-  // FUNCIÓN PRINCIPAL DE AUDITORÍA
+  // FUNCIÓN PRINCIPAL DE AUDITORÍA (CORREGIDO MODELO DE IA)
   // ============================================================
   async function ejecutarAuditoria() {
     ocultarError();
@@ -462,7 +455,6 @@ La firma DEBE ser exactamente: Equipo CIR
 
       const mensajeUsuario = `Documentos:\n${documentosTexto}\n\nGenera los dos bloques (informe y carta) con los marcadores exactos.`;
 
-      // CONEXIÓN CON TU PROXY DE CLOUDFLARE WORKERS
       const MI_PROXY_URL = 'https://broken-paper-13b3proxy-utp.oscar-torres-4fc.workers.dev';
       const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
       const urlFinal = `${MI_PROXY_URL}?url=${encodeURIComponent(urlDestino)}`;
@@ -474,7 +466,7 @@ La firma DEBE ser exactamente: Equipo CIR
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'glm-5.3-flash',
+          model: 'glm-4-flash', // Modelo correcto
           messages: [
             { role: 'system', content: promptFinal },
             { role: 'user', content: mensajeUsuario }
@@ -496,7 +488,6 @@ La firma DEBE ser exactamente: Equipo CIR
         throw new Error('La IA respondió sin contenido de texto.');
       }
 
-      // Separar bloques
       const regexInforme = /===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i;
       const regexCarta = /===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i;
 
@@ -510,7 +501,6 @@ La firma DEBE ser exactamente: Equipo CIR
         cartaContenido = cartaContenido.replace(/\s*$/, '') + '\n\nAtentamente,\n\nEquipo CIR';
       }
 
-      // Renderizar en pantalla
       let htmlCompleto = window.marked ? marked.parse(reporteContenido) : '<pre>' + reporteContenido + '</pre>';
 
       if (cartaContenido && cartaContenido.trim()) {
@@ -532,7 +522,7 @@ La firma DEBE ser exactamente: Equipo CIR
   }
 
   // ============================================================
-  // DESCARGA DE PDFs (CON ESTILOS)
+  // DESCARGA DE PDFs CON ESTILOS (CORREGIDO ORDEN DE INYECCIÓN)
   // ============================================================
   function inyectarEstilosPDF(contenedor) {
     const style = document.createElement('style');
@@ -559,7 +549,6 @@ La firma DEBE ser exactamente: Equipo CIR
 
     const contenedor = document.createElement('div');
     contenedor.style.padding = '10px'; contenedor.style.width = '190mm'; contenedor.style.backgroundColor = '#ffffff';
-    inyectarEstilosPDF(contenedor);
 
     const reporteLimpio = limpiarEmojis(reporteContenido);
     const cartaLimpia = limpiarEmojis(cartaContenido);
@@ -571,7 +560,9 @@ La firma DEBE ser exactamente: Equipo CIR
       htmlInforme += '<div class="separador-documentos"></div>' + '<h1 style="text-align: center; font-size: 16px; margin-bottom: 20px;">CARTA DE RETROALIMENTACIÓN</h1>' + '<div class="carta-bloque">' + cartaHTML + '</div>';
     }
 
+    // Se asigna HTML primero y LUEGO se inyectan los estilos
     contenedor.innerHTML = htmlInforme;
+    inyectarEstilosPDF(contenedor);
 
     html2pdf().set({
       margin: [15, 15, 15, 15], filename: 'Informe_Auditoria_Pedagogica_UTP.pdf',
@@ -585,12 +576,13 @@ La firma DEBE ser exactamente: Equipo CIR
 
     const contenedor = document.createElement('div');
     contenedor.style.padding = '10px'; contenedor.style.width = '190mm'; contenedor.style.backgroundColor = '#ffffff';
-    inyectarEstilosPDF(contenedor);
 
     const cartaLimpia = limpiarEmojis(cartaContenido);
     const cartaHTML = window.marked ? marked.parse(cartaLimpia) : cartaLimpia.replace(/\n/g, '<br>');
 
+    // Se asigna HTML primero y LUEGO se inyectan los estilos
     contenedor.innerHTML = `<div class="carta-bloque" style="min-height: 200px;">${cartaHTML}</div>`;
+    inyectarEstilosPDF(contenedor);
 
     html2pdf().set({
       margin: [15, 15, 15, 15], filename: 'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
