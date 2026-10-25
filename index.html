@@ -146,13 +146,13 @@
   </div>
 
   <div class="input-group">
-    <label class="input-label" for="apiKey">Clave API de Zhipu AI (GLM-4-Flash):</label>
+    <label class="input-label" for="apiKey">Clave API de Zhipu AI (Z.ai):</label>
     <div class="api-input-wrapper">
       <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de z.ai">
       <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility('apiKey')">👁</button>
     </div>
     <div class="sub" style="margin-top:8px;color:#64748b;">
-      Obtén tu clave gratuita en <a href="https://z.ai/" target="_blank">z.ai</a>. El modelo GLM-4-Flash es gratuito.
+      El modelo GLM-4-Flash es gratuito y no tiene límite diario.
     </div>
   </div>
 
@@ -287,28 +287,23 @@
   }
 
   // ============================================================
-  // INSTRUCCIONES DEL SISTEMA (PROMPT BASE)
+  // INSTRUCCIONES DEL SISTEMA (PROMPT)
   // ============================================================
   const SYSTEM_INSTRUCTIONS_BASE = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar instrumentos de evaluación para la UTP del Colegio Isabel Riquelme y generar un informe de revisión técnica junto con una carta de retroalimentación formativa para el docente.
 
-TIPOS DE INSTRUMENTOS QUE PUEDES RECIBIR:
-A) Tabla de Especificaciones: declara OA, habilidades, indicadores, ítems y demanda cognitiva planificada.
-B) Evaluación / Prueba Escrita: instrumento sumativo con ítems.
-C) Rúbrica de Evaluación: instrumento para calificar actividades, trabajos o desempeños en clases. Es autónoma respecto a la prueba escrita.
-D) Escala de Apreciación: instrumento complementario de aula. También autónoma.
+TIPOS DE INSTRUMENTOS:
+A) Tabla de Especificaciones.
+B) Evaluación / Prueba Escrita.
+C) Rúbrica de Evaluación (autónoma).
+D) Escala de Apreciación (autónoma).
 
 REGLA CRÍTICA DE ADAPTACIÓN:
 - Adapta el informe a los instrumentos que REALMENTE se te hayan proporcionado.
 - NO inventes ni analices instrumentos que no estén adjuntos.
-- Si solo se te da UN instrumento, audítalo de forma autónoma y profunda.
-- Si se te dan DOS o más, analiza cada uno por separado y luego su coherencia cuando corresponda.
-
-REGLA DE COHERENCIA CRUZADA:
 - Si están Tabla + Evaluación Escrita → analiza coherencia cruzada obligatoriamente.
-- Si solo está uno de ellos → analízalo sin exigir coherencia con el que falta.
-- Rúbrica y Escala de Apreciación son SIEMPRE instrumentos autónomos. NO exijas coherencia con la prueba escrita. Solo verifica que, si pertenecen al mismo proceso, no se contradigan.
+- Rúbrica y Escala son SIEMPRE instrumentos autónomos. NO exijas coherencia con la prueba escrita.
 
-REGLAS INSTITUCIONALES OBLIGATORIAS (aplican solo si la evaluación escrita está presente):
+REGLAS INSTITUCIONALES OBLIGATORIAS:
 1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: MÁXIMO 3 OA.
 2. REQUISITO DE HABILIDADES: OBLIGATORIAMENTE 3 habilidades declaradas y evaluadas.
 
@@ -334,30 +329,21 @@ Equipo CIR
 ===FIN_CARTA_RETROALIMENTACION===
 `;
 
-  // ============================================================
-  // GENERADOR DINÁMICO DEL PROMPT
-  // ============================================================
   function construirPromptDinamico(instrumentos, fechaHoy) {
     const { tabla, prueba, rubrica, escala } = instrumentos;
-
     const recibidos = [];
     if (tabla) recibidos.push('- Tabla de Especificaciones');
     if (prueba) recibidos.push('- Evaluación / Prueba Escrita');
     if (rubrica) recibidos.push('- Rúbrica de Evaluación');
     if (escala) recibidos.push('- Escala de Apreciación');
 
-    const contexto = `FECHA ACTUAL DEL SISTEMA: ${fechaHoy}\nDebes usar EXACTAMENTE esta fecha en el encabezado de la CARTA DE RETROALIMENTACION.\n\nINSTRUMENTOS RECIBIDOS:\n` + recibidos.join('\n');
+    const contexto = `FECHA ACTUAL: ${fechaHoy}\nUsa esta fecha en la CARTA.\n\nINSTRUMENTOS RECIBIDOS:\n` + recibidos.join('\n');
 
-    let estructura = 'ESTRUCTURA DEL INFORME (adáptala a los instrumentos presentes):\n';
+    let estructura = 'ESTRUCTURA DEL INFORME:\n';
     let sec = 1;
-
     estructura += `${sec++}. Identificación de los instrumentos recibidos\n`;
     estructura += `${sec++}. Síntesis ejecutiva\n`;
-
-    if (tabla) {
-      estructura += `${sec++}. Análisis de la Tabla de Especificaciones\n`;
-    }
-
+    if (tabla) estructura += `${sec++}. Análisis de la Tabla de Especificaciones\n`;
     if (prueba) {
       estructura += `${sec++}. Auditoría ítem por ítem de la Evaluación Escrita\n`;
       estructura += `${sec++}. Análisis de aprendizaje profundo\n`;
@@ -366,19 +352,9 @@ Equipo CIR
       estructura += `${sec++}. Auditoría de metacognición\n`;
       estructura += `${sec++}. Distribución de habilidades cognitivas\n`;
     }
-
-    if (tabla && prueba) {
-      estructura += `${sec++}. Coherencia OA – Habilidades – Ítems\n`;
-    }
-
-    if (rubrica) {
-      estructura += `${sec++}. AUDITORÍA DE LA RÚBRICA\n`;
-    }
-
-    if (escala) {
-      estructura += `${sec++}. AUDITORÍA DE LA ESCALA DE APRECIACIÓN\n`;
-    }
-
+    if (tabla && prueba) estructura += `${sec++}. Coherencia OA – Habilidades – Ítems\n`;
+    if (rubrica) estructura += `${sec++}. AUDITORÍA DE LA RÚBRICA\n`;
+    if (escala) estructura += `${sec++}. AUDITORÍA DE LA ESCALA DE APRECIACIÓN\n`;
     estructura += `${sec++}. ANÁLISIS DE COHERENCIA CON EL MBE\n`;
     estructura += `${sec++}. ANÁLISIS DE COHERENCIA CON EL DECRETO 67/2018\n`;
     estructura += `${sec++}. ANÁLISIS DE SESGO DE GÉNERO Y LENGUAJE INCLUSIVO\n`;
@@ -391,8 +367,8 @@ Equipo CIR
     const requisitosCarta = `
 REQUISITOS DE LA CARTA:
 La carta debe incluir la fecha exacta proporcionada: ${fechaHoy}.
-Debe ser profesional, respetuosa, formativa, concreta, no sancionatoria y orientada a la mejora.
-Debe reconocer fortalezas y señalar oportunidades de mejora en aprendizaje profundo, MBE, Decreto 67 y eliminación de sesgo de género.
+Debe ser profesional, respetuosa, formativa, concreta y orientada a la mejora.
+Debe reconocer fortalezas y señalar oportunidades de mejora en aprendizaje profundo, MBE, Decreto 67 y sesgo de género.
 
 La firma DEBE ser exactamente: Equipo CIR
 `;
@@ -401,7 +377,7 @@ La firma DEBE ser exactamente: Equipo CIR
   }
 
   // ============================================================
-  // FUNCIÓN PRINCIPAL DE AUDITORÍA (CON ZHIPU AI)
+  // FUNCIÓN PRINCIPAL DE AUDITORÍA
   // ============================================================
   async function ejecutarAuditoria() {
     ocultarError();
@@ -428,7 +404,7 @@ La firma DEBE ser exactamente: Equipo CIR
 
     const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
     if (instrumentosCargados.length === 0) {
-      mostrarError('Debes cargar al menos un instrumento (Tabla, Prueba, Rúbrica o Escala).');
+      mostrarError('Debes cargar al menos un instrumento.');
       return;
     }
 
@@ -444,14 +420,14 @@ La firma DEBE ser exactamente: Equipo CIR
 
       if (tablaFile) {
         logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Tabla...`);
-        loaderText.innerText = 'Leyendo Tabla de Especificaciones...';
+        loaderText.innerText = 'Leyendo Tabla...';
         tablaTexto = await extraerTextoDePDF(tablaFile);
         paso++;
       }
 
       if (pruebaFile) {
         logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Evaluación...`);
-        loaderText.innerText = 'Leyendo Evaluación Escrita...';
+        loaderText.innerText = 'Leyendo Evaluación...';
         pruebaTexto = await extraerTextoDePDF(pruebaFile);
         paso++;
       }
@@ -465,63 +441,76 @@ La firma DEBE ser exactamente: Equipo CIR
 
       if (escalaFile) {
         logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Escala...`);
-        loaderText.innerText = 'Leyendo Escala de Apreciación...';
+        loaderText.innerText = 'Leyendo Escala...';
         escalaTexto = await extraerTextoDePDF(escalaFile);
         paso++;
       }
 
-      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Zhipu AI (GLM-4-Flash)...`);
-      loaderText.innerText = 'Consultando Zhipu AI...';
+      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Zhipu AI...`);
+      loaderText.innerText = 'Consultando IA...';
 
       const fechaHoy = getFechaActual();
       const promptFinal = construirPromptDinamico({
-        tabla: !!tablaTexto,
-        prueba: !!pruebaTexto,
-        rubrica: !!rubricaTexto,
-        escala: !!escalaTexto
+        tabla: !!tablaTexto, prueba: !!pruebaTexto, rubrica: !!rubricaTexto, escala: !!escalaTexto
       }, fechaHoy);
 
-      // Construir el texto completo de los documentos
       let documentosTexto = '';
-      if (tablaTexto) documentosTexto += `\n\n=== TABLA DE ESPECIFICACIONES ===\n${tablaTexto}`;
-      if (pruebaTexto) documentosTexto += `\n\n=== EVALUACIÓN ESCRITA ===\n${pruebaTexto}`;
+      if (tablaTexto) documentosTexto += `\n\n=== TABLA ===\n${tablaTexto}`;
+      if (pruebaTexto) documentosTexto += `\n\n=== EVALUACIÓN ===\n${pruebaTexto}`;
       if (rubricaTexto) documentosTexto += `\n\n=== RÚBRICA ===\n${rubricaTexto}`;
-      if (escalaTexto) documentosTexto += `\n\n=== ESCALA DE APRECIACIÓN ===\n${escalaTexto}`;
+      if (escalaTexto) documentosTexto += `\n\n=== ESCALA ===\n${escalaTexto}`;
 
-      const mensajeUsuario = `Aquí tienes los documentos de evaluación para auditar:\n${documentosTexto}\n\nRealiza la auditoría pedagógica completa. Genera los dos bloques (informe y carta) con los marcadores exactos.`;
+      const mensajeUsuario = `Documentos:\n${documentosTexto}\n\nGenera los dos bloques (informe y carta) con los marcadores exactos.`;
 
-      // Configuramos la URL y el Proxy
-           // Llamada directa al endpoint de Z.ai (soporta CORS nativamente)
+      // USAMOS Z.AI CON DOBLE PROXY DE RESPALDO
       const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
+      let response;
 
-      const response = await fetch(urlDestino, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'glm-4-flash',
-          messages: [
-            { role: 'system', content: promptFinal },
-            { role: 'user', content: mensajeUsuario }
-          ],
-          temperature: 0.2,
-          max_tokens: 8192
-        })
-      });
+      // Intento 1: corsproxy.io
+      try {
+        logStatus('Intentando conexión (Proxy 1)...');
+        response = await fetch('https://corsproxy.io/?' + encodeURIComponent(urlDestino), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: 'glm-4-flash',
+            messages: [
+              { role: 'system', content: promptFinal },
+              { role: 'user', content: mensajeUsuario }
+            ],
+            temperature: 0.2,
+            max_tokens: 8192
+          })
+        });
+        if (!response.ok && response.status !== 200) throw new Error('Fallo Proxy 1');
+      } catch (e) {
+        // Intento 2: allorigins.win
+        logStatus('Proxy 1 falló. Intentando conexión (Proxy 2)...');
+        response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(urlDestino), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: 'glm-4-flash',
+            messages: [
+              { role: 'system', content: promptFinal },
+              { role: 'user', content: mensajeUsuario }
+            ],
+            temperature: 0.2,
+            max_tokens: 8192
+          })
+        });
+      }
 
       if (!response.ok) {
         const errorJson = await response.json().catch(() => ({}));
-        const errorMsg = errorJson.error?.message || `HTTP ${response.status}`;
-        throw new Error(`Error de Zhipu AI: ${errorMsg}`);
+        throw new Error(`Error HTTP ${response.status}: ${errorJson.error?.message || 'Fallo de conexión'}`);
       }
 
       const json = await response.json();
       const textoResultado = json.choices?.[0]?.message?.content?.trim();
 
       if (!textoResultado) {
-        throw new Error('Zhipu AI respondió sin contenido de texto.');
+        throw new Error('La IA respondió sin contenido de texto.');
       }
 
       // Separar bloques
@@ -548,14 +537,10 @@ La firma DEBE ser exactamente: Equipo CIR
 
       document.getElementById('reporteContenido').innerHTML = htmlCompleto;
       document.getElementById('results').style.display = 'block';
-      logStatus('✅ Proceso completado exitosamente.');
+      logStatus('✅ Proceso completado.');
 
     } catch (err) {
-      let detalle = err?.message || String(err);
-      if (/Failed to fetch|NetworkError/i.test(detalle)) {
-        detalle = 'No fue posible conectar con el servidor. Revisa tu conexión.';
-      }
-      mostrarError('Error durante el proceso:\n' + detalle);
+      mostrarError('Error: ' + (err?.message || String(err)));
       console.error(err);
     } finally {
       document.getElementById('btnAnalizar').disabled = false;
@@ -564,7 +549,7 @@ La firma DEBE ser exactamente: Equipo CIR
   }
 
   // ============================================================
-  // DESCARGA DE PDFs (CON ESTILOS Y LIMPIEZA DE EMOJIS)
+  // DESCARGA DE PDFs (CON ESTILOS)
   // ============================================================
   function inyectarEstilosPDF(contenedor) {
     const style = document.createElement('style');
@@ -583,26 +568,14 @@ La firma DEBE ser exactamente: Equipo CIR
   }
 
   function limpiarEmojis(texto) {
-    return texto
-      .replace(/🟢/g, '[ALTA]')
-      .replace(/🟡/g, '[MEDIA]')
-      .replace(/🔴/g, '[BAJA]')
-      .replace(/🧠/g, '[METACOGNICIÓN]')
-      .replace(/⚖️/g, '[SESGO]')
-      .replace(/📄/g, '');
+    return texto.replace(/🟢/g, '[ALTA]').replace(/🟡/g, '[MEDIA]').replace(/🔴/g, '[BAJA]').replace(/🧠/g, '[METACOGNICIÓN]').replace(/⚖️/g, '[SESGO]').replace(/📄/g, '');
   }
 
   function descargarInformePDF() {
-    if (!reporteContenido || !reporteContenido.trim()) {
-      mostrarError('No hay informe técnico disponible para descargar.');
-      return;
-    }
+    if (!reporteContenido || !reporteContenido.trim()) return mostrarError('No hay informe disponible.');
 
     const contenedor = document.createElement('div');
-    contenedor.style.padding = '10px';
-    contenedor.style.width = '190mm';
-    contenedor.style.backgroundColor = '#ffffff';
-
+    contenedor.style.padding = '10px'; contenedor.style.width = '190mm'; contenedor.style.backgroundColor = '#ffffff';
     inyectarEstilosPDF(contenedor);
 
     const reporteLimpio = limpiarEmojis(reporteContenido);
@@ -612,37 +585,23 @@ La firma DEBE ser exactamente: Equipo CIR
 
     if (cartaLimpia && cartaLimpia.trim()) {
       const cartaHTML = window.marked ? marked.parse(cartaLimpia) : '<pre>' + cartaLimpia + '</pre>';
-      htmlInforme +=
-        '<div class="separador-documentos"></div>' +
-        '<h1 style="text-align: center; font-size: 16px; margin-bottom: 20px;">CARTA DE RETROALIMENTACIÓN</h1>' +
-        '<div class="carta-bloque">' + cartaHTML + '</div>';
+      htmlInforme += '<div class="separador-documentos"></div>' + '<h1 style="text-align: center; font-size: 16px; margin-bottom: 20px;">CARTA DE RETROALIMENTACIÓN</h1>' + '<div class="carta-bloque">' + cartaHTML + '</div>';
     }
 
     contenedor.innerHTML = htmlInforme;
 
-    const opciones = {
-      margin:       [15, 15, 15, 15],
-      filename:     'Informe_Auditoria_Pedagogica_UTP.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1000 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['css', 'legacy'] }
-    };
-
-    html2pdf().set(opciones).from(contenedor).save();
+    html2pdf().set({
+      margin: [15, 15, 15, 15], filename: 'Informe_Auditoria_Pedagogica_UTP.pdf',
+      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1000 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] }
+    }).from(contenedor).save();
   }
 
   function descargarCartaPDF() {
-    if (!cartaContenido || !cartaContenido.trim()) {
-      mostrarError('No hay carta de retroalimentación disponible para descargar.');
-      return;
-    }
+    if (!cartaContenido || !cartaContenido.trim()) return mostrarError('No hay carta disponible.');
 
     const contenedor = document.createElement('div');
-    contenedor.style.padding = '10px';
-    contenedor.style.width = '190mm';
-    contenedor.style.backgroundColor = '#ffffff';
-
+    contenedor.style.padding = '10px'; contenedor.style.width = '190mm'; contenedor.style.backgroundColor = '#ffffff';
     inyectarEstilosPDF(contenedor);
 
     const cartaLimpia = limpiarEmojis(cartaContenido);
@@ -650,15 +609,11 @@ La firma DEBE ser exactamente: Equipo CIR
 
     contenedor.innerHTML = `<div class="carta-bloque" style="min-height: 200px;">${cartaHTML}</div>`;
 
-    const opciones = {
-      margin:       [15, 15, 15, 15],
-      filename:     'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 1000 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opciones).from(contenedor).save();
+    html2pdf().set({
+      margin: [15, 15, 15, 15], filename: 'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
+      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, windowWidth: 1000 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(contenedor).save();
   }
 </script>
 </body>
