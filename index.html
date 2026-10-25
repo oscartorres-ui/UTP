@@ -320,15 +320,34 @@ Equipo CIR
     if (escala) recibidos.push('- Escala de Apreciación');
 
     const contexto = 'INSTRUMENTOS RECIBIDOS EN ESTA SOLICITUD:\n' + recibidos.join('\n');
-    let estructura = 'ESTRUCTURA DEL INFORME:\n1. Identificación\n2. Síntesis ejecutiva\n';
-    if (tabla) estructura += '3. Análisis de Tabla de Especificaciones\n';
-    if (prueba) estructura += '4. Auditoría ítem por ítem\n5. Aprendizaje profundo\n6. Preguntas e indicadores\n';
-    if (rubrica) estructura += '7. Auditoría de Rúbrica\n';
-    if (escala) estructura += '8. Auditoría de Escala\n';
-    estructura += '9. Fortalezas y recomendaciones generales\n10. Conclusión técnica\n';
 
-    const requisitosCarta = `\nREQUISITOS DE LA CARTA:\nFecha: ${fechaHoy}.\nFirma obligatoria exacta: Equipo CIR`;
-    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + requisitosCarta;
+    let estructura = 'ESTRUCTURA DEL INFORME (adáptala a los instrumentos presentes):\n1. Identificación\n2. Síntesis ejecutiva\n';
+    if (tabla) estructura += '3. Análisis de la Tabla de Especificaciones\n';
+    if (prueba) {
+      estructura += '4. Auditoría ítem por ítem de la Evaluación Escrita (TODOS los ítems)\n';
+      estructura += '5. Análisis de aprendizaje profundo\n';
+      estructura += '6. Preguntas de interpretación, comparación, justificación y evidencia\n';
+      estructura += '7. Preguntas superficiales y reformulación\n';
+      estructura += '8. Auditoría de metacognición y preguntas sugeridas\n';
+      estructura += '9. Distribución de habilidades cognitivas\n';
+    }
+    if (tabla && prueba) estructura += '10. Coherencia OA – Habilidades – Ítems entre Tabla y Prueba\n';
+    if (rubrica) estructura += '11. AUDITORÍA DE LA RÚBRICA (instrumento autónomo)\n';
+    if (escala) estructura += '12. AUDITORÍA DE LA ESCALA DE APRECIACIÓN (instrumento autónomo)\n';
+    estructura += '13. Fortalezas generales\n14. Aspectos críticos generales\n15. Recomendaciones UTP\n16. Conclusión técnica\n';
+
+    let instruccionesItems = '';
+    if (prueba) {
+      instruccionesItems = `
+Para CADA ítem determina: OA, habilidad declarada, habilidad movilizada, contenido, demanda cognitiva, uso de evidencia, nivel de aprendizaje profundo, presencia de metacognición, problema detectado y recomendación. Clasifica cada ítem con semáforo: 🟢 Alta profundidad, 🟡 Profundidad intermedia, 🔴 Baja profundidad, 🧠 Metacognitivo.`;
+    }
+
+    const requisitosCarta = `
+REQUISITOS DE LA CARTA:
+Fecha: ${fechaHoy}. La carta debe ser profesional, respetuosa, formativa y no sancionatoria.
+Firma DEBE ser exactamente: Equipo CIR`;
+
+    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + instruccionesItems + '\n' + requisitosCarta;
   }
 
   async function ejecutarAuditoria() {
@@ -377,7 +396,6 @@ Equipo CIR
       if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
       if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
-      // SECUENCIA DE MODELOS EN REINTENTO ESCALONADO
       const modelos = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
       let data = null;
       let erroresAcumulados = [];
@@ -407,18 +425,9 @@ Equipo CIR
             try {
               response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-goog-api-key': apiKey
-                },
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 signal: controller.signal,
-                body: JSON.stringify({
-                  contents: [{ parts: parts }],
-                  generationConfig: {
-                    temperature: 0.2,
-                    maxOutputTokens: 16384
-                  }
-                })
+                body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.2, maxOutputTokens: 16384 } })
               });
 
               const raw = await response.text();
@@ -448,13 +457,13 @@ Equipo CIR
             }
 
             if (esErrorPermiso) {
-              errorFatal = `PERMISO_DENEGADO: Sin permisos (HTTP ${status}). Verifica que Generative Language API esté habilitada.`;
+              errorFatal = `PERMISO_DENEGADO: Sin permisos (HTTP ${status}). Verifica la habilitación de la API.`;
               logStatus(`❌ ${model}: Permiso denegado. Deteniendo reintentos.`);
               break;
             }
 
             if (esErrorPeticion) {
-              errorFatal = `SOLICITUD_INVALIDA: Rechazada (HTTP 400). Revisa que los archivos PDF sean válidos.`;
+              errorFatal = `SOLICITUD_INVALIDA: Solicitud rechazada (HTTP 400). Detalle: ${errDetail}`;
               logStatus(`❌ ${model}: Solicitud inválida. Deteniendo reintentos.`);
               break;
             }
@@ -539,7 +548,7 @@ Equipo CIR
   }
 
   // ============================================================
-  // DESCARGA DE PDFs RESTRUCTURADA Y AUDITADA
+  // DESCARGA DE PDFs RESTRUCTURADA (PANTALLA DE CARGA Y CARTA LETTER)
   // ============================================================
 
   function inyectarEstilosPDF(contenedor) {
@@ -618,31 +627,33 @@ Equipo CIR
       .replace(/📄/g, '');
   }
 
-  function crearContenedorTemporalHTML(htmlInner) {
-    const contenedor = document.createElement('div');
-    contenedor.style.position = 'fixed';
-    contenedor.style.top = '0';
-    contenedor.style.left = '0';
-    contenedor.style.width = '190mm'; // Ajuste exacto para hoja Carta (Letter)
-    contenedor.style.backgroundColor = '#ffffff';
-    contenedor.style.opacity = '0.01'; // Evita el parpadeo visual en pantalla pero permite dibujo por GPU
-    contenedor.style.pointerEvents = 'none';
-    contenedor.style.zIndex = '9999';
-
-    contenedor.innerHTML = htmlInner;
-    inyectarEstilosPDF(contenedor);
-    document.body.appendChild(contenedor);
-    return contenedor;
+  function mostrarPdfLoader(mensaje) {
+    let overlay = document.getElementById('pdfOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'pdfOverlay';
+      overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);
+        z-index: 1000000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #ffffff; font-family: sans-serif; font-weight: 600; font-size: 1.1rem;
+      `;
+      overlay.innerHTML = `
+        <div style="background: white; padding: 24px 32px; border-radius: 12px; text-align: center; color: #1e293b; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+          <div class="spinner" style="margin-bottom: 12px; width: 30px; height: 30px; border-width: 4px;"></div>
+          <div id="pdfOverlayText">${mensaje}</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      document.getElementById('pdfOverlayText').innerText = mensaje;
+      overlay.style.display = 'flex';
+    }
   }
 
-  function esperarRenderizado() {
-    return new Promise(resolve => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          resolve();
-        });
-      });
-    });
+  function ocultarPdfLoader() {
+    const overlay = document.getElementById('pdfOverlay');
+    if (overlay) overlay.style.display = 'none';
   }
 
   async function descargarInformePDF() {
@@ -650,6 +661,8 @@ Equipo CIR
       mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
       return;
     }
+
+    mostrarPdfLoader('Generando Informe PDF en Formato Carta...');
 
     const reporteLimpio = limpiarEmojis(reporteContenido);
     const cartaLimpia = limpiarEmojis(cartaContenido);
@@ -664,8 +677,21 @@ Equipo CIR
         '<div class="carta-bloque">' + cartaHTML + '</div>';
     }
 
-    const contenedor = crearContenedorTemporalHTML(htmlInforme);
-    await esperarRenderizado();
+    const contenedor = document.createElement('div');
+    contenedor.style.position = 'absolute';
+    contenedor.style.top = '0';
+    contenedor.style.left = '0';
+    contenedor.style.width = '185mm'; // Ancho ajustado para hoja Carta (215.9mm) con márgenes
+    contenedor.style.backgroundColor = '#ffffff';
+    contenedor.style.zIndex = '999999';
+    contenedor.style.opacity = '1';
+    contenedor.style.padding = '10px';
+
+    contenedor.innerHTML = htmlInforme;
+    inyectarEstilosPDF(contenedor);
+    document.body.appendChild(contenedor);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const opciones = {
       margin:       [12, 12, 12, 12],
@@ -685,6 +711,7 @@ Equipo CIR
       if (document.body.contains(contenedor)) {
         document.body.removeChild(contenedor);
       }
+      ocultarPdfLoader();
     }
   }
 
@@ -694,11 +721,26 @@ Equipo CIR
       return;
     }
 
+    mostrarPdfLoader('Generando Carta PDF en Formato Carta...');
+
     const cartaLimpia = limpiarEmojis(cartaContenido);
     const cartaHTML = window.marked ? marked.parse(cartaLimpia) : cartaLimpia.replace(/\n/g, '<br>');
 
-    const contenedor = crearContenedorTemporalHTML(`<div class="carta-bloque">${cartaHTML}</div>`);
-    await esperarRenderizado();
+    const contenedor = document.createElement('div');
+    contenedor.style.position = 'absolute';
+    contenedor.style.top = '0';
+    contenedor.style.left = '0';
+    contenedor.style.width = '185mm';
+    contenedor.style.backgroundColor = '#ffffff';
+    contenedor.style.zIndex = '999999';
+    contenedor.style.opacity = '1';
+    contenedor.style.padding = '10px';
+
+    contenedor.innerHTML = `<div class="carta-bloque">${cartaHTML}</div>`;
+    inyectarEstilosPDF(contenedor);
+    document.body.appendChild(contenedor);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const opciones = {
       margin:       [12, 12, 12, 12],
@@ -718,6 +760,7 @@ Equipo CIR
       if (document.body.contains(contenedor)) {
         document.body.removeChild(contenedor);
       }
+      ocultarPdfLoader();
     }
   }
 </script>
