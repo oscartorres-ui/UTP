@@ -34,17 +34,17 @@
     .header-title h2 { color: var(--primary); margin: 0 0 6px 0; }
     .header-title p { color: #64748b; margin: 0; font-size: 0.9rem; }
 
-    .grid-config { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 20px; }
-    @media (max-width: 640px) { .grid-config { grid-template-columns: 1fr; } }
+    .grid-config { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 768px) { .grid-config { grid-template-columns: 1fr; } }
 
     .input-group { margin-bottom: 0px; }
-    label.input-label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: #334155; }
+    label.input-label { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 6px; color: #334155; }
     
     .api-input-wrapper { position: relative; display: flex; align-items: center; }
     .api-input-wrapper input, .api-input-wrapper select {
-      width: 100%; padding: 12px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; background: #fff;
+      width: 100%; padding: 11px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.9rem; background: #fff;
     }
-    .api-input-wrapper input { padding-right: 40px; }
+    .api-input-wrapper input { padding-right: 35px; }
     .api-input-wrapper button.toggle-pwd { position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem; }
     
     .seccion-titulo {
@@ -127,10 +127,20 @@
 
   <div class="grid-config">
     <div class="input-group">
-      <label class="input-label" for="apiKey">Clave API de Zhipu AI (Z.ai):</label>
+      <label class="input-label" for="apiKey">Clave API de Zhipu AI:</label>
       <div class="api-input-wrapper">
-        <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de z.ai">
+        <input type="password" id="apiKey" placeholder="Pega aquí tu API Key">
         <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility('apiKey')">👁</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label" for="apiServer">Servidor / Portal:</label>
+      <div class="api-input-wrapper">
+        <select id="apiServer">
+          <option value="https://open.bigmodel.cn/api/paas/v4/chat/completions" selected>BigModel (cn)</option>
+          <option value="https://api.z.ai/api/paas/v4/chat/completions">Z.ai (Global)</option>
+        </select>
       </div>
     </div>
 
@@ -138,10 +148,10 @@
       <label class="input-label" for="apiModel">Modelo IA:</label>
       <div class="api-input-wrapper">
         <select id="apiModel">
-          <option value="glm-4-flash" selected>glm-4-flash (Gratuito)</option>
-          <option value="glm-4">glm-4 (Estándar)</option>
-          <option value="glm-4-air">glm-4-air (Rápido)</option>
-          <option value="glm-4-plus">glm-4-plus (Avanzado)</option>
+          <option value="glm-4-flash" selected>glm-4-flash (Gratis)</option>
+          <option value="glm-4-flashx">glm-4-flashx (Gratis)</option>
+          <option value="glm-4-air">glm-4-air</option>
+          <option value="glm-4">glm-4 (De Pago)</option>
         </select>
       </div>
     </div>
@@ -356,8 +366,8 @@ La firma DEBE ser exactamente: Equipo CIR
     return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + requisitosCarta;
   }
 
-  // Función para realizar la llamada HTTP a la API
-  async function llamarApiZhipu(urlFinal, apiKey, modelSelected, promptFinal, mensajeUsuario) {
+  async function llamarApiZhipu(proxyUrl, targetServerUrl, apiKey, modelSelected, promptFinal, mensajeUsuario) {
+    const urlFinal = `${proxyUrl}?url=${encodeURIComponent(targetServerUrl)}`;
     return await fetch(urlFinal, {
       method: 'POST',
       headers: {
@@ -381,7 +391,8 @@ La firma DEBE ser exactamente: Equipo CIR
     ocultarInfo();
 
     const apiKey = document.getElementById('apiKey').value.trim();
-    let modelSelected = document.getElementById('apiModel').value;
+    let selectedServer = document.getElementById('apiServer').value;
+    let selectedModel = document.getElementById('apiModel').value;
 
     const tablaFile = document.getElementById('tablaPdf')?.files?.[0];
     const pruebaFile = document.getElementById('pruebaPdf')?.files?.[0];
@@ -445,7 +456,7 @@ La firma DEBE ser exactamente: Equipo CIR
         paso++;
       }
 
-      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Zhipu AI (${modelSelected})...`);
+      logStatus(`[${totalPasos}/${totalPasos}] Consultando IA (${selectedModel})...`);
       loaderText.innerText = 'Consultando IA...';
 
       const fechaHoy = getFechaActual();
@@ -460,38 +471,40 @@ La firma DEBE ser exactamente: Equipo CIR
       if (escalaTexto) documentosTexto += `\n\n=== ESCALA ===\n${escalaTexto}`;
 
       const mensajeUsuario = `Documentos:\n${documentosTexto}\n\nGenera los dos bloques (informe y carta) con los marcadores exactos.`;
+      const PROXY_URL = 'https://broken-paper-13b3proxy-utp.oscar-torres-4fc.workers.dev';
 
-      const MI_PROXY_URL = 'https://broken-paper-13b3proxy-utp.oscar-torres-4fc.workers.dev';
-      const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
-      const urlFinal = `${MI_PROXY_URL}?url=${encodeURIComponent(urlDestino)}`;
+      // Primer intento con la configuración seleccionada
+      let response = await llamarApiZhipu(PROXY_URL, selectedServer, apiKey, selectedModel, promptFinal, mensajeUsuario);
 
-      let response = await llamarApiZhipu(urlFinal, apiKey, modelSelected, promptFinal, mensajeUsuario);
-
-      // Si falla por modelo desconocido (Error 400 / 1211), reintentar automáticamente con alternativas
+      // Si falla por 400 (Modelo o Servidor no reconocido) o 429 (Sin saldo), probar conmutación de servidor/modelo gratuito
       if (!response.ok) {
-        const errorJson = await response.json().catch(() => ({}));
-        const esUnknownModel = response.status === 400 && (errorJson.error?.code === '1211' || errorJson.error?.message?.includes('Unknown Model'));
-        
-        if (esUnknownModel) {
-          const modelosAlternativos = ['glm-4-flash', 'glm-4', 'glm-4-air'].filter(m => m !== modelSelected);
-          let exito = false;
+        const errJson = await response.json().catch(() => ({}));
+        logStatus(`⚠️ La petición inicial falló (${response.status}): ${errJson.error?.message || 'Error de autenticación'}`);
 
-          for (const altModel of modelosAlternativos) {
-            logStatus(`⚠️ El modelo ${modelSelected} no fue reconocido por tu API Key. Probando con ${altModel}...`);
-            response = await llamarApiZhipu(urlFinal, apiKey, altModel, promptFinal, mensajeUsuario);
+        // Alternar servidor (BigModel cn <-> Z.ai Global)
+        const altServer = selectedServer.includes('open.bigmodel.cn') 
+          ? 'https://api.z.ai/api/paas/v4/chat/completions' 
+          : 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+
+        const modelosGratis = ['glm-4-flash', 'glm-4-flashx'];
+
+        let exito = false;
+        for (const serverTry of [selectedServer, altServer]) {
+          for (const modelTry of modelosGratis) {
+            logStatus(`🔄 Intentando en servidor ${serverTry.includes('bigmodel') ? 'BigModel (cn)' : 'Z.ai (Global)'} con modelo '${modelTry}'...`);
+            response = await llamarApiZhipu(PROXY_URL, serverTry, apiKey, modelTry, promptFinal, mensajeUsuario);
             if (response.ok) {
               exito = true;
-              modelSelected = altModel;
-              document.getElementById('apiModel').value = altModel;
+              document.getElementById('apiServer').value = serverTry;
+              document.getElementById('apiModel').value = modelTry;
               break;
             }
           }
+          if (exito) break;
+        }
 
-          if (!exito) {
-            throw new Error(`Error HTTP 400: Tu clave API no reconoce el modelo '${modelSelected}'. Selecciona otro modelo en el menú desplegable.`);
-          }
-        } else {
-          throw new Error(`Error HTTP ${response.status}: ${errorJson.error?.message || 'Fallo de conexión'}`);
+        if (!exito) {
+          throw new Error(errJson.error?.message || `Error HTTP ${response.status}. Revisa que tu API Key sea válida en open.bigmodel.cn o z.ai.`);
         }
       }
 
@@ -524,7 +537,7 @@ La firma DEBE ser exactamente: Equipo CIR
 
       document.getElementById('reporteContenido').innerHTML = htmlCompleto;
       document.getElementById('results').style.display = 'block';
-      logStatus('✅ Proceso completado exitosamente.');
+      logStatus('✅ Auditoría completada con éxito.');
 
     } catch (err) {
       mostrarError('Error: ' + (err?.message || String(err)));
