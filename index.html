@@ -299,7 +299,8 @@
       .replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
 
     let sufijo = '';
-    if (cleanAsignatura) sufijo += `_${cleanAsignatura}`; if (cleanNivel) sufijo += `_${cleanNivel}`;
+    if (cleanAsignatura) sufijo += `_${cleanAsignatura}`;
+    if (cleanNivel) sufijo += `_${cleanNivel}`;
 
     return `${prefijo}${sufijo}.pdf`;
   }
@@ -467,4 +468,595 @@ Clasifica cada ítem con semáforo:
     if (rubrica || escala) {
       marcoAula = `
 MARCO DE CALIDAD PARA INSTRUMENTOS DE AULA (rúbrica y escala):
-Aplica estas 4 dimensiones basadas en el Rub
+Aplica estas 4 dimensiones basadas en el Rubric Quality Framework:
+1. Estructura: ¿criterios, niveles y descriptores claramente definidos?
+2. Diseño de criterios: ¿relevantes, observables, alineados con aprendizajes esperados?
+3. Descriptores de desempeño: ¿describen cualitativamente niveles o solo usan intensificadores ("muy bien", "excelente")?
+4. Lenguaje y equidad: ¿claro, accionable, inclusivo, sin sesgos?
+`;
+    }
+
+    const requisitosCarta = `
+REQUISITOS DE LA CARTA:
+La carta debe incluir la fecha exacta proporcionada: ${fechaHoy}.
+La carta debe ser profesional, respetuosa, formativa, concreta, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora. Debe incluir recomendaciones sobre:
+- aprendizaje profundo (si aplica)
+- interpretación (si aplica)
+- comparación (si aplica)
+- justificación (si aplica)
+- evidencia (si aplica)
+- metacognición (si aplica)
+- calidad de los instrumentos de aula (si se proporcionaron)
+
+La firma DEBE ser exactamente: Equipo CIR
+Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógica Experta en Evaluación", "Equipo de Asesoría".
+`;
+
+    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + instruccionesItems + '\n' + marcoAula + '\n' + requisitosCarta;
+  }
+
+  // ============================================================
+  // FUNCIÓN PRINCIPAL DE AUDITORÍA
+  // ============================================================
+  async function ejecutarAuditoria() {
+    ocultarError();
+    ocultarInfo();
+
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const tablaFile = document.getElementById('tablaPdf')?.files?.[0];
+    const pruebaFile = document.getElementById('pruebaPdf')?.files?.[0];
+    const rubricaFile = document.getElementById('rubricaPdf')?.files?.[0];
+    const escalaFile = document.getElementById('escalaPdf')?.files?.[0];
+
+    const statusBox = document.getElementById('statusBox');
+    const loaderText = document.getElementById('loaderText');
+
+    statusBox.style.display = 'none';
+    statusBox.innerText = '';
+    reporteContenido = '';
+    cartaContenido = '';
+
+    if (!apiKey) {
+      mostrarError('Debes ingresar tu Clave API de Gemini.');
+      return;
+    }
+
+    const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
+    if (instrumentosCargados.length === 0) {
+      mostrarError('Debes cargar al menos un instrumento (Tabla, Prueba, Rúbrica o Escala).');
+      return;
+    }
+
+    const archivos = [
+      { file: tablaFile, nombre: 'Tabla de Especificaciones' },
+      { file: pruebaFile, nombre: 'Evaluación/Prueba Escrita' },
+      { file: rubricaFile, nombre: 'Rúbrica' },
+      { file: escalaFile, nombre: 'Escala de Apreciación' }
+    ];
+
+    for (const a of archivos) {
+      if (a.file && a.file.type !== 'application/pdf') {
+        mostrarError(`El archivo cargado en "${a.nombre}" no es un PDF válido (tipo: "${a.file.type || 'desconocido'}").`);
+        return;
+      }
+    }
+
+    const totalSize = instrumentosCargados.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > 19 * 1024 * 1024) {
+      mostrarError(`Los archivos PDF suman ${(totalSize / 1024 / 1024).toFixed(1)} MB y superan el límite de 19 MB.`);
+      return;
+    }
+
+    const avisos = [];
+    if (pruebaFile && !tablaFile) {
+      avisos.push('ℹ️ Cargaste la Evaluación Escrita sin la Tabla de Especificaciones. La auditoría se hará sin verificar coherencia cruzada.');
+    }
+    if (tablaFile && !pruebaFile) {
+      avisos.push('ℹ️ Cargaste la Tabla de Especificaciones sin la Evaluación Escrita. La auditoría se hará sobre la planificación declarada.');
+    }
+    if (avisos.length > 0) {
+      mostrarInfo(avisos.join('\n\n') + '\n\nPuedes continuar presionando "✨ Auditar instrumentos pedagógicos".');
+    }
+
+    document.getElementById('btnAnalizar').disabled = true;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    try {
+      let paso = 1;
+      const totalPasos = instrumentosCargados.length + 2;
+
+      let tablaB64 = null, pruebaB64 = null, rubricaB64 = null, escalaB64 = null;
+
+      if (tablaFile) {
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Tabla (${(tablaFile.size / 1024).toFixed(1)} KB)...`);
+        loaderText.innerText = 'Leyendo Tabla de Especificaciones...';
+        tablaB64 = await fileToBase64(tablaFile);
+        paso++;
+      }
+
+      if (pruebaFile) {
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Evaluación (${(pruebaFile.size / 1024).toFixed(1)} KB)...`);
+        loaderText.innerText = 'Leyendo Evaluación Escrita...';
+        pruebaB64 = await fileToBase64(pruebaFile);
+        paso++;
+      }
+
+      if (rubricaFile) {
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Rúbrica (${(rubricaFile.size / 1024).toFixed(1)} KB)...`);
+        loaderText.innerText = 'Leyendo Rúbrica...';
+        rubricaB64 = await fileToBase64(rubricaFile);
+        paso++;
+      }
+
+      if (escalaFile) {
+        logStatus(`[${paso}/${totalPasos}] Convirtiendo Escala (${(escalaFile.size / 1024).toFixed(1)} KB)...`);
+        loaderText.innerText = 'Leyendo Escala de Apreciación...';
+        escalaB64 = await fileToBase64(escalaFile);
+        paso++;
+      }
+
+      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Google Gemini...`);
+
+      const fechaHoy = getFechaActual();
+      
+      const promptFinal = construirPromptDinamico({
+        tabla: !!tablaB64,
+        prueba: !!pruebaB64,
+        rubrica: !!rubricaB64,
+        escala: !!escalaB64
+      }, fechaHoy);
+
+      const parts = [{ text: promptFinal + "\n\nRealiza la auditoría pedagógica completa sobre los instrumentos adjuntos. Genera los dos bloques (informe y carta) con los marcadores exactos." }];
+
+      if (tablaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: tablaB64 } });
+      if (pruebaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: pruebaB64 } });
+      if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
+      if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
+
+      const modelos = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
+      let data = null;
+      let erroresAcumulados = [];
+      let errorFatal = null;
+
+      const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const conJitter = (baseMs) => baseMs * (0.5 + Math.random());
+
+      for (const model of modelos) {
+        if (errorFatal) break;
+
+        logStatus(`\n📡 Probando con el modelo: ${model}...`);
+
+        const MAX_INTENTOS = 4;
+        let exitoModelo = false;
+
+        for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+          if (errorFatal) break;
+
+          loaderText.innerText = `Consultando ${model} (intento ${intento}/${MAX_INTENTOS})...`;
+
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+            let response;
+            let json = {};
+
+            try {
+              response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': apiKey
+                },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  contents: [{ parts: parts }],
+                  generationConfig: {
+                    temperature: 0.2,
+                    maxOutputTokens: 16384
+                  }
+                })
+              });
+
+              const raw = await response.text();
+              try {
+                json = raw ? JSON.parse(raw) : {};
+              } catch (_) {
+                json = { error: { message: raw || 'Respuesta no JSON de Gemini.' } };
+              }
+            } finally {
+              clearTimeout(timeoutId);
+            }
+
+            if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
+              data = json;
+              logStatus(`✅ Conexión exitosa con el modelo ${model} (intento ${intento})`);
+              exitoModelo = true;
+              break;
+            }
+
+            const status = response.status;
+            const errDetail = json.error ? json.error.message : 'HTTP ' + status;
+
+            const esErrorAPIKey = /API key not valid|API_KEY_INVALID|invalid api key|api key expired|API key.*not.*valid|API_KEY_EXPIRED/i.test(errDetail);
+            const esErrorPermiso = status === 401 || status === 403;
+            const esErrorPeticion = status === 400 && !esErrorAPIKey;
+
+            if (esErrorAPIKey) {
+              errorFatal = 'API_KEY_INVALIDA: La API Key de Gemini no es válida.\n\nVerifica que:\n\n1. La copiaste completa, sin espacios al inicio o final.\n2. Empieza con "AIza..." y tiene ~39 caracteres.\n3. Está activa en Google AI Studio o Google Cloud Console.\n4. Si tiene restricciones por sitio web, el dominio actual (' + window.location.origin + ') está incluido.\n5. La "Generative Language API" está habilitada en tu proyecto.\n6. El proyecto tiene facturación activa si es necesario.';
+              logStatus(`❌ ${model}: La API Key no es válida. Deteniendo reintentos.`);
+              break;
+            }
+
+            if (esErrorPermiso) {
+              errorFatal = `PERMISO_DENEGADO: La API Key no tiene permisos para este recurso (HTTP ${status}).\n\nVerifica que:\n\n1. La "Generative Language API" esté habilitada en tu proyecto de Google Cloud.\n2. La cuenta de facturación esté activa.\n3. Las restricciones de API de la clave incluyan "Generative Language API".\n4. Las restricciones de sitio web incluyan el dominio actual.\n\nDetalle de Google: ${errDetail}`;
+              logStatus(`❌ ${model}: Sin permisos (HTTP ${status}). Deteniendo reintentos.`);
+              break;
+            }
+
+            if (esErrorPeticion) {
+              errorFatal = `SOLICITUD_INVALIDA: La solicitud fue rechazada (HTTP 400).\n\nVerifica que los archivos PDF sean válidos y no estén dañados.\n\nDetalle de Google: ${errDetail}`;
+              logStatus(`❌ ${model}: Solicitud inválida. Deteniendo reintentos.`);
+              break;
+            }
+
+            const esTransitorio = status === 503 || status === 429 || status === 502;
+
+            if (esTransitorio && intento < MAX_INTENTOS) {
+              const delayBase = Math.pow(2, intento) * 1000;
+              const delay = Math.round(conJitter(delayBase));
+              logStatus(`⏳ ${model} saturado (HTTP ${status}). Reintentando en ${(delay/1000).toFixed(1)}s... (intento ${intento}/${MAX_INTENTOS})`);
+              loaderText.innerText = `Servidor saturado. Reintentando en ${(delay/1000).toFixed(0)}s...`;
+              await esperar(delay);
+              continue;
+            }
+
+            erroresAcumulados.push(`[${model}] (intento ${intento}): ${errDetail}`);
+            logStatus(`⚠️ ${model} falló: ${errDetail}`);
+            break;
+
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              erroresAcumulados.push(`[${model}] (intento ${intento}): Tiempo de espera agotado (120s)`);
+              logStatus(`⚠️ ${model}: tiempo de espera agotado.`);
+            } else {
+              erroresAcumulados.push(`[${model}] (intento ${intento}): ${e.message}`);
+              logStatus(`⚠️ ${model} falló: ${e.message}`);
+            }
+
+            if (intento < MAX_INTENTOS) {
+              const delay = Math.round(conJitter(Math.pow(2, intento) * 1000));
+              logStatus(`⏳ Reintentando en ${(delay/1000).toFixed(1)}s... (intento ${intento}/${MAX_INTENTOS})`);
+              await esperar(delay);
+              continue;
+            }
+            break;
+          }
+        }
+
+        if (exitoModelo) break;
+
+        if (model !== modelos[modelos.length - 1] && !errorFatal) {
+          logStatus(`⏸️ Cambiando al siguiente modelo...`);
+          await esperar(1500);
+        }
+      }
+
+      if (errorFatal) {
+        throw new Error(errorFatal);
+      }
+
+      if (!data) {
+        throw new Error('TODOS_MODELOS_SATURADOS: Los modelos de Gemini están experimentando alta demanda en este momento. Espera unos minutos e inténtalo de nuevo.\n\nDetalle técnico:\n' + erroresAcumulados.join('\n'));
+      }
+
+      logStatus('\n📄 Generando informe final...');
+      loaderText.innerText = 'Renderizando informe...';
+
+      const partesResp = data?.candidates?.[0]?.content?.parts || [];
+      const textoResultado = partesResp
+        .filter(p => typeof p.text === 'string')
+        .map(p => p.text)
+        .join('\n')
+        .trim();
+
+      if (!textoResultado) {
+        throw new Error('Gemini respondió sin contenido de texto. Revisa la clave API, el modelo y los archivos PDF.');
+      }
+
+      const separarBloques = (texto) => {
+        const regexInforme = /===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i;
+        const regexCarta = /===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i;
+
+        const matchInforme = texto.match(regexInforme);
+        const matchCarta = texto.match(regexCarta);
+
+        const informe = matchInforme ? matchInforme[1].trim() : '';
+        let carta = matchCarta ? matchCarta[1].trim() : '';
+
+        if (carta && !/Equipo CIR\s*$/i.test(carta)) {
+          carta = carta.replace(/\s*$/, '') + '\n\nAtentamente,\n\nEquipo CIR';
+        }
+
+        return { informe, carta };
+      };
+
+      const { informe, carta } = separarBloques(textoResultado);
+
+      reporteContenido = informe || textoResultado;
+      cartaContenido = carta || '';
+
+      if (!cartaContenido) {
+        logStatus('⚠️ No se detectó la carta en la respuesta. Solicitando carta independiente...');
+
+        try {
+          const controller2 = new AbortController();
+          const timeoutId2 = setTimeout(() => controller2.abort(), 120000);
+
+          const response2 = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey
+            },
+            signal: controller2.signal,
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: 'Genera únicamente una carta de retroalimentación formativa profesional para el docente, basada en el siguiente informe de auditoría pedagógica:\n\n' + reporteContenido + '\n\nLa carta debe ser respetuosa, formativa, no sancionatoria y orientada a la mejora. Debe reconocer fortalezas y señalar oportunidades de mejora. Termina exactamente con:\n\nAtentamente,\n\nEquipo CIR' }
+                ]
+              }],
+              generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 8192
+              }
+            })
+          });
+
+          clearTimeout(timeoutId2);
+          const raw2 = await response2.text();
+          const json2 = JSON.parse(raw2);
+
+          if (response2.ok && json2.candidates && json2.candidates[0]?.content?.parts[0]?.text) {
+            cartaContenido = json2.candidates[0].content.parts[0].text.trim();
+            if (!/Equipo CIR\s*$/i.test(cartaContenido)) {
+              cartaContenido = cartaContenido.replace(/\s*$/, '') + '\n\nAtentamente,\n\nEquipo CIR';
+            }
+            logStatus('✅ Carta generada exitosamente.');
+          } else {
+            throw new Error('No se pudo generar la carta.');
+          }
+        } catch (e) {
+          logStatus('⚠️ No se pudo generar la carta independiente: ' + e.message);
+          cartaContenido = 'No fue posible generar la carta de retroalimentación.';
+        }
+      }
+
+      let htmlCompleto = '';
+      if (window.marked) {
+        htmlCompleto = marked.parse(reporteContenido);
+      } else {
+        htmlCompleto = '<pre>' + reporteContenido + '</pre>';
+      }
+
+      if (cartaContenido && cartaContenido.trim()) {
+        const cartaHTML = '<div class="carta-bloque">' +
+          cartaContenido.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+          '</div>';
+        htmlCompleto += '<hr class="separador-documentos">' + cartaHTML;
+      }
+
+      document.getElementById('reporteContenido').innerHTML = htmlCompleto;
+      document.getElementById('results').style.display = 'block';
+      logStatus('✅ Proceso completado exitosamente.');
+
+    } catch (err) {
+      let detalle = err?.message || String(err);
+
+      if (detalle.startsWith('API_KEY_INVALIDA:')) {
+        detalle = '🔑 ' + detalle.replace('API_KEY_INVALIDA: ', '');
+      } else if (detalle.startsWith('PERMISO_DENEGADO:')) {
+        detalle = '🚫 ' + detalle.replace('PERMISO_DENEGADO: ', '');
+      } else if (detalle.startsWith('SOLICITUD_INVALIDA:')) {
+        detalle = '📄 ' + detalle.replace('SOLICITUD_INVALIDA: ', '');
+      } else if (detalle.startsWith('TODOS_MODELOS_SATURADOS:')) {
+        detalle = '⚠️ ' + detalle.replace('TODOS_MODELOS_SATURADOS: ', '');
+      } else if (/Failed to fetch|NetworkError|Load failed/i.test(detalle)) {
+        detalle = 'No fue posible conectar con los servidores de Google Gemini. Verifica tu conexión a internet y que la API Key esté correctamente configurada.';
+      } else if (/HTTP 429|rate_limit|quota/i.test(detalle)) {
+        detalle = 'Se alcanzó el límite de cuota de la API de Gemini. Espera unos minutos e inténtalo de nuevo.';
+      } else if (/HTTP 401|authentication/i.test(detalle)) {
+        detalle = '🔑 La API Key no es válida o está expirada. Verifícala en Google AI Studio.';
+      } else if (/HTTP 403|permission/i.test(detalle)) {
+        detalle = '🚫 La API Key no tiene permisos para este recurso. Verifica que la API de Gemini esté habilitada en tu proyecto.';
+      } else if (/HTTP 400|invalid_request/i.test(detalle)) {
+        detalle = 'Solicitud inválida (HTTP 400). Verifica que los archivos PDF sean válidos y que la API Key sea correcta.';
+      } else if (/alta demanda|high demand|UNAVAILABLE|503|502/i.test(detalle)) {
+        detalle = '⚠️ Google Gemini está experimentando alta demanda en este momento. Espera unos minutos y vuelve a intentarlo.';
+      }
+
+      mostrarError('Error durante el proceso:\n' + detalle);
+      console.error('Error completo:', err);
+    } finally {
+      document.getElementById('btnAnalizar').disabled = false;
+      document.getElementById('loader').style.display = 'none';
+    }
+  }
+
+  // ============================================================
+  // DESCARGA DE PDFs RESTRUCTURADA (TAMAÑO CARTA Y SIN CORTE DE PALABRAS)
+  // ============================================================
+
+  function inyectarEstilosPDF(contenedor) {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      * {
+        box-sizing: border-box !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body, div, p, li, th, td, h1, h2, h3, h4 {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: #1e293b;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+      }
+      body {
+        line-height: 1.5;
+        font-size: 11px;
+        margin: 0;
+        padding: 0;
+      }
+      
+      h1, h2, h3, h4 {
+        color: #6b21a8;
+        margin-top: 16px;
+        margin-bottom: 8px;
+        page-break-after: avoid;
+      }
+      p, li {
+        margin-bottom: 8px;
+      }
+      
+      table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 10px;
+        page-break-inside: auto;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+      th, td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 8px;
+        text-align: left;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+      }
+      th {
+        background-color: #f1f5f9;
+        color: #1e293b;
+        font-weight: bold;
+      }
+      
+      .carta-bloque {
+        background: #f0fdff;
+        border-left: 4px solid #00c4cc;
+        padding: 16px 20px;
+        border-radius: 8px;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+      }
+      .separador-documentos {
+        border-top: 2px dashed #c4b5fd;
+        margin: 30px 0;
+        page-break-before: always;
+      }
+    `;
+    contenedor.appendChild(style);
+  }
+
+  function limpiarEmojis(texto) {
+    return texto
+      .replace(/🟢/g, '[ALTA]')
+      .replace(/🟡/g, '[MEDIA]')
+      .replace(/🔴/g, '[BAJA]')
+      .replace(/🧠/g, '[METACOGNICIÓN]')
+      .replace(/⚖️/g, '[SESGO]')
+      .replace(/📄/g, '');
+  }
+
+  async function descargarInformePDF() {
+    if (!reporteContenido || !reporteContenido.trim()) {
+      mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
+      return;
+    }
+
+    const contenedor = document.createElement('div');
+    contenedor.style.position = 'absolute';
+    contenedor.style.left = '-9999px';
+    contenedor.style.top = '0';
+    contenedor.style.width = '180mm'; // Ancho ajustado para Tamaño Carta (Letter) con margen interno
+    contenedor.style.backgroundColor = '#ffffff';
+
+    document.body.appendChild(contenedor);
+    inyectarEstilosPDF(contenedor);
+
+    const reporteLimpio = limpiarEmojis(reporteContenido);
+    const cartaLimpia = limpiarEmojis(cartaContenido);
+
+    let htmlInforme = window.marked ? marked.parse(reporteLimpio) : '<pre>' + reporteLimpio + '</pre>';
+
+    if (cartaLimpia && cartaLimpia.trim()) {
+      const cartaHTML = window.marked ? marked.parse(cartaLimpia) : '<pre>' + cartaLimpia + '</pre>';
+      
+      htmlInforme +=
+        '<div class="separador-documentos"></div>' +
+        '<h1 style="text-align: center; font-size: 15px; margin-bottom: 15px; color: #6b21a8;">CARTA DE RETROALIMENTACIÓN</h1>' +
+        '<div class="carta-bloque">' + cartaHTML + '</div>';
+    }
+
+    contenedor.innerHTML += htmlInforme;
+
+    const opciones = {
+      margin:       [12, 12, 12, 12],
+      filename:     generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1024 },
+      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opciones).from(contenedor).save();
+    } finally {
+      document.body.removeChild(contenedor);
+    }
+  }
+
+  async function descargarCartaPDF() {
+    if (!cartaContenido || !cartaContenido.trim()) {
+      mostrarError('No hay carta de retroalimentación disponible para descargar. Ejecuta primero la auditoría.');
+      return;
+    }
+
+    const contenedor = document.createElement('div');
+    contenedor.style.position = 'absolute';
+    contenedor.style.left = '-9999px';
+    contenedor.style.top = '0';
+    contenedor.style.width = '180mm';
+    contenedor.style.backgroundColor = '#ffffff';
+
+    document.body.appendChild(contenedor);
+    inyectarEstilosPDF(contenedor);
+
+    const cartaLimpia = limpiarEmojis(cartaContenido);
+    const cartaHTML = window.marked ? marked.parse(cartaLimpia) : cartaLimpia.replace(/\n/g, '<br>');
+
+    contenedor.innerHTML += `<div class="carta-bloque">${cartaHTML}</div>`;
+
+    const opciones = {
+      margin:       [12, 12, 12, 12],
+      filename:     generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1024 },
+      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opciones).from(contenedor).save();
+    } finally {
+      document.body.removeChild(contenedor);
+    }
+  }
+</script>
+</body>
+</html>
