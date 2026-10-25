@@ -366,16 +366,17 @@ La firma DEBE ser exactamente: Equipo CIR
     return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + requisitosCarta;
   }
 
-  async function llamarApiZhipu(proxyUrl, targetServerUrl, apiKey, modelSelected, promptFinal, mensajeUsuario) {
+    async function llamarApiZhipu(proxyUrl, targetServerUrl, apiKey, modelSelected, promptFinal, mensajeUsuario) {
     const urlFinal = `${proxyUrl}?url=${encodeURIComponent(targetServerUrl)}`;
     return await fetch(urlFinal, {
       method: 'POST',
+      mode: 'cors',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: modelSelected,
+        model: 'glm-4.7-flash', // Forzamos el modelo correcto aquí
         messages: [
           { role: 'system', content: promptFinal },
           { role: 'user', content: mensajeUsuario }
