@@ -33,8 +33,9 @@
     
     .api-input-wrapper { position: relative; display: flex; align-items: center; }
     .api-input-wrapper input {
-      width: 100%; padding: 12px 40px 12px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; background: #fff;
+      width: 100%; padding: 12px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; background: #fff;
     }
+    .api-input-wrapper input[type="password"] { padding-right: 40px; }
     .api-input-wrapper button.toggle-pwd { position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem; }
     
     .seccion-titulo {
@@ -150,6 +151,26 @@
     </div>
   </div>
 
+  <!-- IDENTIFICACIÓN PARA EL NOMBRE DEL ARCHIVO DESCARGADO -->
+  <div class="seccion-titulo">
+    📌 Identificación de los archivos a descargar
+    <span class="hint">(se incluirá únicamente en el nombre de los PDFs descargados)</span>
+  </div>
+  <div class="grid-files">
+    <div class="input-group" style="margin-bottom:0;">
+      <label class="input-label" for="asignatura">Asignatura:</label>
+      <div class="api-input-wrapper">
+        <input type="text" id="asignatura" placeholder="Ej: Matemática, Lenguaje, Historia">
+      </div>
+    </div>
+    <div class="input-group" style="margin-bottom:0;">
+      <label class="input-label" for="nivel">Curso / Nivel:</label>
+      <div class="api-input-wrapper">
+        <input type="text" id="nivel" placeholder="Ej: 7° Básico, 1° Medio">
+      </div>
+    </div>
+  </div>
+
   <div class="seccion-titulo">
     📘 Evaluación escrita
     <span class="hint">(puedes cargar uno, ambos o ninguno)</span>
@@ -256,11 +277,35 @@
   function ocultarInfo() {
     document.getElementById('infoBox').style.display = 'none';
   }
-// Función para obtener la fecha actual en español
-function getFechaActual() {
-  const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
-  return new Date().toLocaleDateString('es-CL', opciones);
-}
+
+  function getFechaActual() {
+    const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
+    return new Date().toLocaleDateString('es-CL', opciones);
+  }
+
+  // ============================================================
+  // GENERADOR DE NOMBRE DE ARCHIVO
+  // ============================================================
+  function generarNombreArchivoPDF(prefijo) {
+    const asignaturaRaw = document.getElementById('asignatura')?.value.trim() || '';
+    const nivelRaw = document.getElementById('nivel')?.value.trim() || '';
+
+    // Limpia caracteres no válidos para nombres de archivo y acentos
+    const cleanAsignatura = asignaturaRaw
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
+
+    const cleanNivel = nivelRaw
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
+
+    let sufijo = '';
+    if (cleanAsignatura) sufijo += `_${cleanAsignatura}`;
+    if (cleanNivel) sufijo += `_${cleanNivel}`;
+
+    return `${prefijo}${sufijo}.pdf`;
+  }
+
   // ============================================================
   // CONVERSIÓN DE ARCHIVOS A BASE64
   // ============================================================
@@ -554,7 +599,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
       logStatus(`[${totalPasos}/${totalPasos}] Conectando con Google Gemini...`);
 
-           const fechaHoy = getFechaActual();
+      const fechaHoy = getFechaActual();
       
       const promptFinal = construirPromptDinamico({
         tabla: !!tablaB64,
@@ -856,28 +901,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
   // DESCARGA DE PDFs
   // ============================================================
 
-  /**
-   * Descarga el informe técnico COMPLETO, que incluye:
-   *   1. El informe técnico-pedagógico.
-   *   2. Separador visual.
-   *   3. La carta de retroalimentación.
-   */
-    // Función auxiliar para inyectar CSS que evita que se corten las letras en el PDF
-  function inyectarEstilosPDF(contenedor) {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      * { box-sizing: border-box; }
-      body { font-family: 'Arial', sans-serif; color: #1e293b; }
-      table { width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-bottom: 15px; }
-      th, td { padding: 8px; border: 1px solid #ddd; word-wrap: break-word; font-size: 11px; }
-      h1, h2, h3, h4 { page-break-after: avoid; color: #6b21a8; margin-top: 15px; margin-bottom: 10px; }
-      p, li { word-wrap: break-word; font-size: 12px; line-height: 1.5; margin-bottom: 10px; }
-      pre { white-space: pre-wrap; word-wrap: break-word; }
-    `;
-    contenedor.appendChild(style);
-  }
-
-    // Función auxiliar para inyectar CSS con los colores de la página web
+  // Función auxiliar para inyectar CSS con los colores de la página web
   function inyectarEstilosPDF(contenedor) {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -943,7 +967,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
     const opciones = {
       margin:       [15, 15, 15, 15],
-      filename:     'Informe_Auditoria_Pedagogica_UTP.pdf',
+      filename:     generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'),
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1000 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -973,7 +997,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
 
     const opciones = {
       margin:       [15, 15, 15, 15],
-      filename:     'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
+      filename:     generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'),
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, windowWidth: 1000 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
