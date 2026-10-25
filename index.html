@@ -151,7 +151,6 @@
     </div>
   </div>
 
-  <!-- IDENTIFICACIÓN PARA EL NOMBRE DEL ARCHIVO DESCARGADO -->
   <div class="seccion-titulo">
     📌 Identificación de los archivos a descargar
     <span class="hint">(se incluirá únicamente en el nombre de los PDFs descargados)</span>
@@ -234,20 +233,12 @@
 </div>
 
 <script>
-  // ============================================================
-  // VARIABLES GLOBALES
-  // ============================================================
   let reporteContenido = '';
   let cartaContenido = '';
 
-  // ============================================================
-  // UTILIDADES DE UI
-  // ============================================================
   function togglePasswordVisibility(id) {
     const input = document.getElementById(id);
-    if (input) {
-      input.type = input.type === 'password' ? 'text' : 'password';
-    }
+    if (input) input.type = input.type === 'password' ? 'text' : 'password';
   }
 
   function logStatus(msg) {
@@ -264,39 +255,20 @@
     errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  function ocultarError() {
-    document.getElementById('errorBox').style.display = 'none';
-  }
-
-  function mostrarInfo(msg) {
-    const infoBox = document.getElementById('infoBox');
-    infoBox.innerText = msg;
-    infoBox.style.display = 'block';
-  }
-
-  function ocultarInfo() {
-    document.getElementById('infoBox').style.display = 'none';
-  }
+  function ocultarError() { document.getElementById('errorBox').style.display = 'none'; }
+  function mostrarInfo(msg) { const infoBox = document.getElementById('infoBox'); infoBox.innerText = msg; infoBox.style.display = 'block'; }
+  function ocultarInfo() { document.getElementById('infoBox').style.display = 'none'; }
 
   function getFechaActual() {
-    const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
-    return new Date().toLocaleDateString('es-CL', opciones);
+    return new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
   }
 
-  // ============================================================
-  // GENERADOR DE NOMBRE DE ARCHIVO
-  // ============================================================
   function generarNombreArchivoPDF(prefijo) {
     const asignaturaRaw = document.getElementById('asignatura')?.value.trim() || '';
     const nivelRaw = document.getElementById('nivel')?.value.trim() || '';
 
-    const cleanAsignatura = asignaturaRaw
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
-
-    const cleanNivel = nivelRaw
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
+    const cleanAsignatura = asignaturaRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
+    const cleanNivel = nivelRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_");
 
     let sufijo = '';
     if (cleanAsignatura) sufijo += `_${cleanAsignatura}`;
@@ -305,56 +277,23 @@
     return `${prefijo}${sufijo}.pdf`;
   }
 
-  // ============================================================
-  // CONVERSIÓN DE ARCHIVOS A BASE64
-  // ============================================================
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
-      if (!file) {
-        reject(new Error('Archivo no encontrado.'));
-        return;
-      }
+      if (!file) return reject(new Error('Archivo no encontrado.'));
       const reader = new FileReader();
       reader.onload = () => {
-        try {
-          const res = reader.result;
-          if (typeof res === 'string' && res.includes(',')) {
-            resolve(res.split(',')[1]);
-          } else {
-            reject(new Error('Respuesta de lectura de archivo no válida.'));
-          }
-        } catch (e) {
-          reject(e);
-        }
+        const res = reader.result;
+        if (typeof res === 'string' && res.includes(',')) resolve(res.split(',')[1]);
+        else reject(new Error('Respuesta de lectura de archivo no válida.'));
       };
       reader.onerror = (err) => reject(err || new Error('Error al leer el PDF.'));
       reader.readAsDataURL(file);
     });
   }
 
-  // ============================================================
-  // INSTRUCCIONES DEL SISTEMA (PROMPT BASE)
-  // ============================================================
   const SYSTEM_INSTRUCTIONS_BASE = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar instrumentos de evaluación para la UTP del Colegio Isabel Riquelme y generar un informe de revisión técnica junto con una carta de retroalimentación formativa para el docente.
 
-TIPOS DE INSTRUMENTOS QUE PUEDES RECIBIR:
-A) Tabla de Especificaciones: declara OA, habilidades, indicadores, ítems y demanda cognitiva planificada.
-B) Evaluación / Prueba Escrita: instrumento sumativo con ítems.
-C) Rúbrica de Evaluación: instrumento para calificar actividades, trabajos o desempeños en clases. Es autónoma respecto a la prueba escrita.
-D) Escala de Apreciación: instrumento complementario de aula. También autónoma.
-
-REGLA CRÍTICA DE ADAPTACIÓN:
-- Adapta el informe a los instrumentos que REALMENTE se te hayan proporcionado.
-- NO inventes ni analices instrumentos que no estén adjuntos.
-- Si solo se te da UN instrumento, audítalo de forma autónoma y profunda.
-- Si se te dan DOS o más, analiza cada uno por separado y luego su coherencia cuando corresponda.
-
-REGLA DE COHERENCIA CRUZADA:
-- Si están Tabla + Evaluación Escrita → analiza coherencia cruzada obligatoriamente.
-- Si solo está uno de ellos → analízalo sin exigir coherencia con el que falta.
-- Rúbrica y Escala de Apreciación son SIEMPRE instrumentos autónomos. NO exijas coherencia con la prueba escrita. Solo verifica que, si pertenecen al mismo proceso, no se contradigan.
-
-REGLAS INSTITUCIONALES OBLIGATORIAS (aplican solo si la evaluación escrita está presente):
+REGLAS INSTITUCIONALES OBLIGATORIAS:
 1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: MÁXIMO 3 OA.
 2. REQUISITO DE HABILIDADES: OBLIGATORIAMENTE 3 habilidades declaradas y evaluadas.
 
@@ -372,12 +311,415 @@ Atentamente,
 Equipo CIR
 ===FIN_CARTA_RETROALIMENTACION===`;
 
-  // ============================================================
-  // GENERADOR DINÁMICO DEL PROMPT SEGÚN INSTRUMENTOS PRESENTES
-  // ============================================================
   function construirPromptDinamico(instrumentos, fechaHoy) { 
     const { tabla, prueba, rubrica, escala } = instrumentos;
-
     const recibidos = [];
     if (tabla) recibidos.push('- Tabla de Especificaciones');
-    if (
+    if (prueba) recibidos.push('- Evaluación / Prueba Escrita');
+    if (rubrica) recibidos.push('- Rúbrica de Evaluación');
+    if (escala) recibidos.push('- Escala de Apreciación');
+
+    const contexto = 'INSTRUMENTOS RECIBIDOS EN ESTA SOLICITUD:\n' + recibidos.join('\n');
+    let estructura = 'ESTRUCTURA DEL INFORME:\n1. Identificación\n2. Síntesis ejecutiva\n';
+    if (tabla) estructura += '3. Análisis de Tabla de Especificaciones\n';
+    if (prueba) estructura += '4. Auditoría ítem por ítem\n5. Aprendizaje profundo\n6. Preguntas e indicadores\n';
+    if (rubrica) estructura += '7. Auditoría de Rúbrica\n';
+    if (escala) estructura += '8. Auditoría de Escala\n';
+    estructura += '9. Fortalezas y recomendaciones generales\n10. Conclusión técnica\n';
+
+    const requisitosCarta = `\nREQUISITOS DE LA CARTA:\nFecha: ${fechaHoy}.\nFirma obligatoria exacta: Equipo CIR`;
+    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + requisitosCarta;
+  }
+
+  async function ejecutarAuditoria() {
+    ocultarError();
+    ocultarInfo();
+
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const tablaFile = document.getElementById('tablaPdf')?.files?.[0];
+    const pruebaFile = document.getElementById('pruebaPdf')?.files?.[0];
+    const rubricaFile = document.getElementById('rubricaPdf')?.files?.[0];
+    const escalaFile = document.getElementById('escalaPdf')?.files?.[0];
+
+    const statusBox = document.getElementById('statusBox');
+    const loaderText = document.getElementById('loaderText');
+
+    statusBox.style.display = 'none';
+    statusBox.innerText = '';
+    reporteContenido = '';
+    cartaContenido = '';
+
+    if (!apiKey) return mostrarError('Debes ingresar tu Clave API de Gemini.');
+
+    const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
+    if (instrumentosCargados.length === 0) return mostrarError('Debes cargar al menos un instrumento.');
+
+    document.getElementById('btnAnalizar').disabled = true;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    try {
+      let paso = 1;
+      const totalPasos = instrumentosCargados.length + 2;
+
+      let tablaB64 = tablaFile ? await fileToBase64(tablaFile) : null;
+      let pruebaB64 = pruebaFile ? await fileToBase64(pruebaFile) : null;
+      let rubricaB64 = rubricaFile ? await fileToBase64(rubricaFile) : null;
+      let escalaB64 = escalaFile ? await fileToBase64(escalaFile) : null;
+
+      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Google Gemini...`);
+      const fechaHoy = getFechaActual();
+      const promptFinal = construirPromptDinamico({ tabla: !!tablaB64, prueba: !!pruebaB64, rubrica: !!rubricaB64, escala: !!escalaB64 }, fechaHoy);
+
+      const parts = [{ text: promptFinal + "\n\nRealiza la auditoría pedagógica completa sobre los instrumentos adjuntos. Genera los dos bloques (informe y carta) con los marcadores exactos." }];
+      if (tablaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: tablaB64 } });
+      if (pruebaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: pruebaB64 } });
+      if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
+      if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
+
+      // SECUENCIA DE MODELOS EN REINTENTO ESCALONADO
+      const modelos = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
+      let data = null;
+      let erroresAcumulados = [];
+      let errorFatal = null;
+
+      const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const conJitter = (baseMs) => baseMs * (0.5 + Math.random());
+
+      for (const model of modelos) {
+        if (errorFatal) break;
+
+        logStatus(`\n📡 Probando con el modelo: ${model}...`);
+        const MAX_INTENTOS = 4;
+        let exitoModelo = false;
+
+        for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+          if (errorFatal) break;
+          loaderText.innerText = `Consultando ${model} (intento ${intento}/${MAX_INTENTOS})...`;
+
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+            let response;
+            let json = {};
+
+            try {
+              response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': apiKey
+                },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  contents: [{ parts: parts }],
+                  generationConfig: {
+                    temperature: 0.2,
+                    maxOutputTokens: 16384
+                  }
+                })
+              });
+
+              const raw = await response.text();
+              try { json = raw ? JSON.parse(raw) : {}; } catch (_) { json = { error: { message: raw || 'Respuesta no JSON.' } }; }
+            } finally {
+              clearTimeout(timeoutId);
+            }
+
+            if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
+              data = json;
+              logStatus(`✅ Conexión exitosa con el modelo ${model} (intento ${intento})`);
+              exitoModelo = true;
+              break;
+            }
+
+            const status = response.status;
+            const errDetail = json.error ? json.error.message : 'HTTP ' + status;
+
+            const esErrorAPIKey = /API key not valid|API_KEY_INVALID|invalid api key|api key expired/i.test(errDetail);
+            const esErrorPermiso = status === 401 || status === 403;
+            const esErrorPeticion = status === 400 && !esErrorAPIKey;
+
+            if (esErrorAPIKey) {
+              errorFatal = 'API_KEY_INVALIDA: La API Key de Gemini no es válida. Verifícala en Google AI Studio.';
+              logStatus(`❌ ${model}: API Key no válida. Deteniendo reintentos.`);
+              break;
+            }
+
+            if (esErrorPermiso) {
+              errorFatal = `PERMISO_DENEGADO: Sin permisos (HTTP ${status}). Verifica que Generative Language API esté habilitada.`;
+              logStatus(`❌ ${model}: Permiso denegado. Deteniendo reintentos.`);
+              break;
+            }
+
+            if (esErrorPeticion) {
+              errorFatal = `SOLICITUD_INVALIDA: Rechazada (HTTP 400). Revisa que los archivos PDF sean válidos.`;
+              logStatus(`❌ ${model}: Solicitud inválida. Deteniendo reintentos.`);
+              break;
+            }
+
+            const esTransitorio = status === 503 || status === 429 || status === 502;
+            if (esTransitorio && intento < MAX_INTENTOS) {
+              const delay = Math.round(conJitter(Math.pow(2, intento) * 1000));
+              logStatus(`⏳ ${model} saturado (HTTP ${status}). Reintentando en ${(delay/1000).toFixed(1)}s...`);
+              await esperar(delay);
+              continue;
+            }
+
+            erroresAcumulados.push(`[${model}] (intento ${intento}): ${errDetail}`);
+            logStatus(`⚠️ ${model} falló: ${errDetail}`);
+            break;
+
+          } catch (e) {
+            erroresAcumulados.push(`[${model}] (intento ${intento}): ${e.message}`);
+            if (intento < MAX_INTENTOS) {
+              const delay = Math.round(conJitter(Math.pow(2, intento) * 1000));
+              await esperar(delay);
+              continue;
+            }
+            break;
+          }
+        }
+
+        if (exitoModelo) break;
+        if (model !== modelos[modelos.length - 1] && !errorFatal) {
+          logStatus(`⏸️ Cambiando al siguiente modelo de respaldo...`);
+          await esperar(1200);
+        }
+      }
+
+      if (errorFatal) throw new Error(errorFatal);
+      if (!data) throw new Error('TODOS_MODELOS_SATURADOS: Los modelos están experimentando alta demanda. Inténtalo de nuevo en unos minutos.');
+
+      const partesResp = data?.candidates?.[0]?.content?.parts || [];
+      const textoResultado = partesResp.filter(p => typeof p.text === 'string').map(p => p.text).join('\n').trim();
+
+      if (!textoResultado) throw new Error('Respuesta vacía de la API.');
+
+      const matchInforme = textoResultado.match(/===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i);
+      const matchCarta = textoResultado.match(/===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i);
+
+      reporteContenido = matchInforme ? matchInforme[1].trim() : textoResultado;
+      cartaContenido = matchCarta ? matchCarta[1].trim() : '';
+
+      if (!cartaContenido) {
+        logStatus('⚠️ Generando carta independiente de respaldo...');
+        try {
+          const response2 = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'Genera únicamente la carta formativa profesional basada en el informe:\n\n' + reporteContenido + '\n\nFirma exacta:\nAtentamente,\n\nEquipo CIR' }] }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+            })
+          });
+          const json2 = await response2.json();
+          cartaContenido = json2.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        } catch (e) {
+          cartaContenido = 'No fue posible generar la carta independiente.';
+        }
+      }
+
+      let htmlCompleto = window.marked ? marked.parse(reporteContenido) : '<pre>' + reporteContenido + '</pre>';
+      if (cartaContenido) {
+        htmlCompleto += '<hr class="separador-documentos"><div class="carta-bloque">' + (window.marked ? marked.parse(cartaContenido) : cartaContenido) + '</div>';
+      }
+
+      document.getElementById('reporteContenido').innerHTML = htmlCompleto;
+      document.getElementById('results').style.display = 'block';
+      logStatus('✅ Proceso completado exitosamente.');
+
+    } catch (err) {
+      mostrarError('Error durante la auditoría: ' + err.message);
+    } finally {
+      document.getElementById('btnAnalizar').disabled = false;
+      document.getElementById('loader').style.display = 'none';
+    }
+  }
+
+  // ============================================================
+  // DESCARGA DE PDFs RESTRUCTURADA Y AUDITADA
+  // ============================================================
+
+  function inyectarEstilosPDF(contenedor) {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      * {
+        box-sizing: border-box !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body, div, p, li, th, td, h1, h2, h3, h4 {
+        font-family: 'Segoe UI', Arial, sans-serif !important;
+        color: #1e293b !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+      }
+      h1, h2, h3, h4 {
+        color: #6b21a8 !important;
+        margin-top: 14px !important;
+        margin-bottom: 8px !important;
+        page-break-after: avoid !important;
+      }
+      p, li {
+        margin-bottom: 8px !important;
+        font-size: 11px !important;
+        line-height: 1.5 !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 12px 0 !important;
+        font-size: 10px !important;
+        page-break-inside: auto !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+      }
+      th, td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px 8px !important;
+        text-align: left !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+      }
+      th {
+        background-color: #f1f5f9 !important;
+        color: #1e293b !important;
+        font-weight: bold !important;
+      }
+      .carta-bloque {
+        background: #f0fdff !important;
+        border-left: 4px solid #00c4cc !important;
+        padding: 16px 20px !important;
+        border-radius: 8px !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+      }
+      .separador-documentos {
+        border-top: 2px dashed #c4b5fd !important;
+        margin: 24px 0 !important;
+        page-break-before: always !important;
+      }
+    `;
+    contenedor.appendChild(style);
+  }
+
+  function limpiarEmojis(texto) {
+    return texto
+      .replace(/🟢/g, '[ALTA]')
+      .replace(/🟡/g, '[MEDIA]')
+      .replace(/🔴/g, '[BAJA]')
+      .replace(/🧠/g, '[METACOGNICIÓN]')
+      .replace(/⚖️/g, '[SESGO]')
+      .replace(/📄/g, '');
+  }
+
+  function crearContenedorTemporalHTML(htmlInner) {
+    const contenedor = document.createElement('div');
+    contenedor.style.position = 'fixed';
+    contenedor.style.top = '0';
+    contenedor.style.left = '0';
+    contenedor.style.width = '190mm'; // Ajuste exacto para hoja Carta (Letter)
+    contenedor.style.backgroundColor = '#ffffff';
+    contenedor.style.opacity = '0.01'; // Evita el parpadeo visual en pantalla pero permite dibujo por GPU
+    contenedor.style.pointerEvents = 'none';
+    contenedor.style.zIndex = '9999';
+
+    contenedor.innerHTML = htmlInner;
+    inyectarEstilosPDF(contenedor);
+    document.body.appendChild(contenedor);
+    return contenedor;
+  }
+
+  function esperarRenderizado() {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+  }
+
+  async function descargarInformePDF() {
+    if (!reporteContenido || !reporteContenido.trim()) {
+      mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
+      return;
+    }
+
+    const reporteLimpio = limpiarEmojis(reporteContenido);
+    const cartaLimpia = limpiarEmojis(cartaContenido);
+
+    let htmlInforme = window.marked ? marked.parse(reporteLimpio) : '<pre>' + reporteLimpio + '</pre>';
+
+    if (cartaLimpia && cartaLimpia.trim()) {
+      const cartaHTML = window.marked ? marked.parse(cartaLimpia) : '<pre>' + cartaLimpia + '</pre>';
+      htmlInforme +=
+        '<div class="separador-documentos"></div>' +
+        '<h1 style="text-align: center; font-size: 15px; margin-bottom: 15px; color: #6b21a8;">CARTA DE RETROALIMENTACIÓN</h1>' +
+        '<div class="carta-bloque">' + cartaHTML + '</div>';
+    }
+
+    const contenedor = crearContenedorTemporalHTML(htmlInforme);
+    await esperarRenderizado();
+
+    const opciones = {
+      margin:       [12, 12, 12, 12],
+      filename:     generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opciones).from(contenedor).save();
+    } catch (err) {
+      console.error("Error al generar PDF:", err);
+      mostrarError("Error al generar el PDF: " + err.message);
+    } finally {
+      if (document.body.contains(contenedor)) {
+        document.body.removeChild(contenedor);
+      }
+    }
+  }
+
+  async function descargarCartaPDF() {
+    if (!cartaContenido || !cartaContenido.trim()) {
+      mostrarError('No hay carta de retroalimentación disponible para descargar. Ejecuta primero la auditoría.');
+      return;
+    }
+
+    const cartaLimpia = limpiarEmojis(cartaContenido);
+    const cartaHTML = window.marked ? marked.parse(cartaLimpia) : cartaLimpia.replace(/\n/g, '<br>');
+
+    const contenedor = crearContenedorTemporalHTML(`<div class="carta-bloque">${cartaHTML}</div>`);
+    await esperarRenderizado();
+
+    const opciones = {
+      margin:       [12, 12, 12, 12],
+      filename:     generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opciones).from(contenedor).save();
+    } catch (err) {
+      console.error("Error al generar PDF:", err);
+      mostrarError("Error al generar el PDF: " + err.message);
+    } finally {
+      if (document.body.contains(contenedor)) {
+        document.body.removeChild(contenedor);
+      }
+    }
+  }
+</script>
+</body>
+</html>
