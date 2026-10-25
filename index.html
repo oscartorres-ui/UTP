@@ -8,11 +8,8 @@
   <!-- Renderizador de Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
-  <!-- Sanitizador HTML (previene XSS) -->
+  <!-- Sanitizador HTML -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
-  
-  <!-- Generador de PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root {
@@ -92,9 +89,8 @@
     
     .action-bar { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 20px; }
     .btn-download { border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: white; }
-    .btn-download:disabled { opacity: 0.6; cursor: wait; }
-    .btn-download.report { background: #16a34a; }
-    .btn-download.report:hover { background: #15803d; }
+    .btn-download.report { background: #2563eb; }
+    .btn-download.report:hover { background: #1d4ed8; }
     .btn-download.letter { background: #0284c7; }
     .btn-download.letter:hover { background: #0369a1; }
     
@@ -103,15 +99,8 @@
       color: #1e293b;
       font-size: 0.92rem;
       background: #ffffff;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
     }
-    .printable-area h1, .printable-area h2, .printable-area h3 {
-      color: #6b21a8;
-      margin-top: 22px;
-      margin-bottom: 8px;
-      page-break-after: avoid;
-    }
+    .printable-area h1, .printable-area h2, .printable-area h3 { color: #6b21a8; margin-top: 22px; margin-bottom: 8px; }
     .printable-area h1 { font-size: 1.4rem; border-bottom: 2px solid #e9d5ff; padding-bottom: 4px; }
     .printable-area h2 { font-size: 1.2rem; }
     .printable-area h3 { font-size: 1.05rem; }
@@ -119,65 +108,24 @@
     .printable-area ul, .printable-area ol { margin-bottom: 12px; padding-left: 24px; }
     .printable-area li { margin-bottom: 4px; word-break: break-word; }
     
-    .printable-area table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0;
-      font-size: 0.85rem;
-      table-layout: auto;
-    }
-    .printable-area tr { page-break-inside: avoid; }
+    .printable-area table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.85rem; }
     .printable-area tr:nth-child(even) { background-color: #f8fafc; }
-    .printable-area th {
-      background-color: #6b21a8 !important;
-      color: #ffffff !important;
-      font-weight: 700;
-      padding: 10px;
-      text-align: left;
-      border: 1px solid #6b21a8;
-    }
-    .printable-area td {
-      border: 1px solid #cbd5e1;
-      padding: 8px 10px;
-      text-align: left;
-      word-break: break-word;
-    }
+    .printable-area th { background-color: #6b21a8; color: #ffffff; font-weight: 700; padding: 10px; text-align: left; border: 1px solid #6b21a8; }
+    .printable-area td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; word-break: break-word; }
 
-    .badge {
-      display: inline-block;
-      padding: 3px 8px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      border-radius: 6px;
-      margin: 2px 0;
-      white-space: nowrap;
-    }
-    .badge-alta { background-color: #dcfce7 !important; color: #15803d !important; border: 1px solid #bbf7d0 !important; }
-    .badge-media { background-color: #fef9c3 !important; color: #a16207 !important; border: 1px solid #fef08a !important; }
-    .badge-baja { background-color: #fee2e2 !important; color: #b91c1c !important; border: 1px solid #fecaca !important; }
-    .badge-meta { background-color: #f3e8ff !important; color: #6b21a8 !important; border: 1px solid #e9d5ff !important; }
+    .badge { display: inline-block; padding: 3px 8px; font-size: 0.78rem; font-weight: 700; border-radius: 6px; margin: 2px 0; white-space: nowrap; }
+    .badge-alta { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-media { background-color: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+    .badge-baja { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-meta { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
 
-    .separador-documentos {
-      margin: 35px 0 25px 0;
-      border: none;
-      border-top: 3px dashed #c4b5fd;
-      position: relative;
-      page-break-before: always;
-    }
+    .separador-documentos { margin: 35px 0 25px 0; border: none; border-top: 3px dashed #c4b5fd; position: relative; }
     .separador-documentos::after {
       content: "📄 CARTA DE RETROALIMENTACIÓN";
       position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
       background: #ffffff; padding: 0 15px; font-size: 0.8rem; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; white-space: nowrap;
     }
-    .carta-bloque {
-      background: #f0fdff !important;
-      border-left: 5px solid var(--accent) !important;
-      padding: 20px 24px;
-      border-radius: 8px;
-      line-height: 1.7;
-      font-size: 0.95rem;
-      page-break-inside: avoid;
-    }
+    .carta-bloque { background: #f0fdff; border-left: 5px solid var(--accent); padding: 20px 24px; border-radius: 8px; line-height: 1.7; font-size: 0.95rem; }
   </style>
 </head>
 <body>
@@ -192,7 +140,7 @@
     <label class="input-label" for="apiKey">Clave API de Gemini:</label>
     <div class="api-input-wrapper">
       <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de Google AI Studio">
-      <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility('apiKey')">👁</button>
+      <button type="button" class="toggle-pwd" onclick="window.togglePasswordVisibility('apiKey')">👁</button>
     </div>
     <div class="sub" style="margin-top:8px;color:#64748b;">
       La clave se utiliza solo desde tu navegador. Para producción, usa una API Key restringida al dominio de GitHub Pages.
@@ -201,7 +149,7 @@
 
   <div class="seccion-titulo">
     📌 Identificación de los archivos a descargar
-    <span class="hint">(se incluirá únicamente en el nombre de los PDFs descargados)</span>
+    <span class="hint">(se incluirá en el nombre del documento de Word)</span>
   </div>
   <div class="grid-files">
     <div class="input-group" style="margin-bottom:0;">
@@ -238,7 +186,7 @@
 
   <div class="seccion-titulo">
     🧩 Instrumentos de aula
-    <span class="hint">(puedes cargar uno, ambos o ninguno; cualquier nombre de archivo)</span>
+    <span class="hint">(puedes cargar uno, ambos o ninguno)</span>
   </div>
   <div class="grid-files">
     <div class="file-box independent">
@@ -269,11 +217,11 @@
 
   <div id="results">
     <div class="action-bar">
-      <button class="btn-download report" onclick="window.descargarInformePDF()">
-        📥 Descargar Informe + Carta PDF
+      <button class="btn-download report" onclick="window.descargarInformeDocx()">
+        📝 Descargar Informe + Carta Word (.docx)
       </button>
-      <button class="btn-download letter" onclick="window.descargarCartaPDF()">
-        📄 Descargar Solo Carta PDF
+      <button class="btn-download letter" onclick="window.descargarCartaDocx()">
+        📄 Descargar Solo Carta Word (.docx)
       </button>
     </div>
     <div id="reporteContenido" class="printable-area"></div>
@@ -316,7 +264,7 @@
     return new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
   }
 
-  function generarNombreArchivoPDF(prefijo) {
+  function generarNombreArchivoDocx(prefijo) {
     const asignaturaRaw = document.getElementById('asignatura')?.value.trim() || '';
     const nivelRaw = document.getElementById('nivel')?.value.trim() || '';
 
@@ -327,7 +275,7 @@
     if (cleanAsignatura) sufijo += `_${cleanAsignatura}`;
     if (cleanNivel) sufijo += `_${cleanNivel}`;
 
-    return `${prefijo}${sufijo}.pdf`;
+    return `${prefijo}${sufijo}.doc`;
   }
 
   function fileToBase64(file) {
@@ -362,7 +310,7 @@
     } else {
       htmlParsed = textoRaw
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^## (.*$)/gim, '2>$1</h2>')
         .replace(/^# (.*$)/gim, '<h1>$1</h1>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -443,7 +391,7 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
     const statusBox = document.getElementById('statusBox');
     if (statusBox) {
       statusBox.style.display = 'block';
-      statusBox.innerText = '🚀 Clic detectado. Procesando solicitud...\n';
+      statusBox.innerText = '🚀 Procesando solicitud de auditoría...\n';
     }
 
     const apiKey = document.getElementById('apiKey')?.value.trim();
@@ -490,7 +438,6 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
       if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
       if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
-      // Modelos universales de la API de Google Gemini
       const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
       let data = null;
       let errorFatal = null;
@@ -543,7 +490,7 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
           }
 
           if (response.status === 429) {
-            logStatus(`⏳ Cuota (429) alcanzada. Reintentando...`);
+            logStatus(`⏳ Cuota alcanzada. Reintentando...`);
             await esperar(3000);
             continue;
           }
@@ -577,7 +524,7 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
       document.getElementById('reporteContenido').innerHTML = htmlFinal;
       document.getElementById('results').style.display = 'block';
-      logStatus('🎉 Proceso finalizado correctamente.');
+      logStatus('🎉 Proceso finalizado correctamente. ¡Puedes descargar los archivos Word editables!');
 
     } catch (err) {
       mostrarError('Error durante la ejecución: ' + err.message);
@@ -587,67 +534,77 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
     }
   }
 
-  async function descargarInformePDF() {
-    const el = document.getElementById('reporteContenido');
-    if (!el || !reporteContenidoRaw.trim()) {
-      mostrarError('No hay informe técnico generado.');
-      return;
-    }
+  // FUNCIONES PARA EXPORTAR NATIVAMENTE A MICROSOFT WORD (.DOC / .DOCX)
+  function exportarAWordHTML(htmlBodyContent, nombreArchivo) {
+    const cssWord = `
+      <style>
+        @page { size: letter; margin: 2.54cm 2.54cm 2.54cm 2.54cm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.5; }
+        h1 { color: #6b21a8; font-size: 18pt; border-bottom: 2px solid #e9d5ff; padding-bottom: 4px; margin-top: 18pt; margin-bottom: 8pt; }
+        h2 { color: #6b21a8; font-size: 14pt; margin-top: 14pt; margin-bottom: 6pt; }
+        h3 { color: #6b21a8; font-size: 12pt; margin-top: 12pt; margin-bottom: 4pt; }
+        p { margin-bottom: 8pt; }
+        ul, ol { margin-bottom: 10pt; padding-left: 20pt; }
+        table { border-collapse: collapse; width: 100%; margin: 12pt 0; }
+        th { background-color: #6b21a8; color: #ffffff; font-weight: bold; padding: 8pt; border: 1pt solid #6b21a8; text-align: left; }
+        td { border: 1pt solid #cbd5e1; padding: 6pt 8pt; text-align: left; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        .badge { display: inline-block; padding: 2pt 6pt; font-size: 9pt; font-weight: bold; border-radius: 4pt; }
+        .badge-alta { background-color: #dcfce7; color: #15803d; border: 1pt solid #bbf7d0; }
+        .badge-media { background-color: #fef9c3; color: #a16207; border: 1pt solid #fef08a; }
+        .badge-baja { background-color: #fee2e2; color: #b91c1c; border: 1pt solid #fecaca; }
+        .badge-meta { background-color: #f3e8ff; color: #6b21a8; border: 1pt solid #e9d5ff; }
+        .carta-bloque { background-color: #f0fdff; border-left: 4pt solid #00c4cc; padding: 12pt 16pt; margin-top: 16pt; }
+      </style>
+    `;
 
-    const btn = document.querySelector('.btn-download.report');
-    const textoOriginal = btn ? btn.innerHTML : '';
-    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Generando PDF...'; }
+    const htmlCompleto = `
+      <html xmlns:o='urn:schemas-microsoft-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>Documento UTP</title>
+        ${cssWord}
+      </head>
+      <body>
+        ${htmlBodyContent}
+      </body>
+      </html>
+    `;
 
-    const opciones = {
-      margin:       [10, 10, 10, 10],
-      filename:     generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'),
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
-      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
-      pagebreak:    { mode: ['css', 'legacy'] }
-    };
-
-    try {
-      await html2pdf().set(opciones).from(el).save();
-    } catch (e) {
-      mostrarError('Error al crear PDF: ' + e.message);
-    } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
-    }
+    const blob = new Blob(['\ufeff', htmlCompleto], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
-  async function descargarCartaPDF() {
+  function descargarInformeDocx() {
+    const el = document.getElementById('reporteContenido');
+    if (!el || !reporteContenidoRaw.trim()) {
+      return mostrarError('No hay informe generado para descargar.');
+    }
+    const nombre = generarNombreArchivoDocx('Informe_Auditoria_Pedagogica_UTP');
+    exportarAWordHTML(el.innerHTML, nombre);
+  }
+
+  function descargarCartaDocx() {
     const el = document.getElementById('cartaSeccion');
     if (!el || !cartaContenidoRaw.trim()) {
-      mostrarError('No hay carta generada.');
-      return;
+      return mostrarError('No hay carta de retroalimentación generada.');
     }
-
-    const btn = document.querySelector('.btn-download.letter');
-    const textoOriginal = btn ? btn.innerHTML : '';
-    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Generando PDF...'; }
-
-    const opciones = {
-      margin:       [10, 10, 10, 10],
-      filename:     generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'),
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
-      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
-      pagebreak:    { mode: ['css', 'legacy'] }
-    };
-
-    try {
-      await html2pdf().set(opciones).from(el).save();
-    } catch (e) {
-      mostrarError('Error al crear PDF: ' + e.message);
-    } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
-    }
+    const nombre = generarNombreArchivoDocx('Carta_Retroalimentacion_Formativa_Equipo_CIR');
+    exportarAWordHTML(el.innerHTML, nombre);
   }
 
   window.ejecutarAuditoria = ejecutarAuditoria;
-  window.descargarInformePDF = descargarInformePDF;
-  window.descargarCartaPDF = descargarCartaPDF;
+  window.descargarInformeDocx = descargarInformeDocx;
+  window.descargarCartaDocx = descargarCartaDocx;
   window.togglePasswordVisibility = togglePasswordVisibility;
 </script>
 </body>
