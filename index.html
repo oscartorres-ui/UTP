@@ -491,28 +491,29 @@ La firma DEBE ser exactamente: Equipo CIR
       const mensajeUsuario = `Aquí tienes los documentos de evaluación para auditar:\n${documentosTexto}\n\nRealiza la auditoría pedagógica completa. Genera los dos bloques (informe y carta) con los marcadores exactos.`;
 
      // 1. Endpoint correcto para la plataforma Z.ai (internacional)
-const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
+      // 1. Endpoint correcto para la plataforma Z.ai (internacional)
+      const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
+      // Usamos cors.sh, un proxy CORS gratuito y más estable
+      const urlProxy = 'https://proxy.cors.sh/' + urlDestino;
 
-// 2. Usamos un proxy CORS público para evitar el bloqueo del navegador
-const urlProxy = 'https://corsproxy.io/?' + encodeURIComponent(urlDestino);
-
-const response = await fetch(urlProxy, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiKey}`
-  },
-  body: JSON.stringify({
-    model: 'glm-4-flash',
-    messages: [
-      { role: 'system', content: promptFinal },
-      { role: 'user', content: mensajeUsuario }
-    ],
-    temperature: 0.2,
-    max_tokens: 8192
-  })
-});
-
+      // 2. Hacemos la llamada completa
+      const response = await fetch(urlProxy, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        // AQUÍ ESTÁ LO QUE FALTABA: El cuerpo de la solicitud
+        body: JSON.stringify({
+          model: 'glm-4-flash',
+          messages: [
+            { role: 'system', content: promptFinal },
+            { role: 'user', content: mensajeUsuario }
+          ],
+          temperature: 0.2,
+          max_tokens: 8192
+        })
+      }); // <-- Aquí se cierra el fetch
       if (!response.ok) {
         const errorJson = await response.json().catch(() => ({}));
         const errorMsg = errorJson.error?.message || `HTTP ${response.status}`;
