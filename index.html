@@ -490,22 +490,28 @@ La firma DEBE ser exactamente: Equipo CIR
 
       const mensajeUsuario = `Aquí tienes los documentos de evaluación para auditar:\n${documentosTexto}\n\nRealiza la auditoría pedagógica completa. Genera los dos bloques (informe y carta) con los marcadores exactos.`;
 
-      const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'glm-4-flash',
-          messages: [
-            { role: 'system', content: promptFinal },
-            { role: 'user', content: mensajeUsuario }
-          ],
-          temperature: 0.2,
-          max_tokens: 8192
-        })
-      });
+     // 1. Endpoint correcto para la plataforma Z.ai (internacional)
+const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
+
+// 2. Usamos un proxy CORS público para evitar el bloqueo del navegador
+const urlProxy = 'https://corsproxy.io/?' + encodeURIComponent(urlDestino);
+
+const response = await fetch(urlProxy, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  },
+  body: JSON.stringify({
+    model: 'glm-4-flash',
+    messages: [
+      { role: 'system', content: promptFinal },
+      { role: 'user', content: mensajeUsuario }
+    ],
+    temperature: 0.2,
+    max_tokens: 8192
+  })
+});
 
       if (!response.ok) {
         const errorJson = await response.json().catch(() => ({}));
