@@ -491,15 +491,14 @@ La firma DEBE ser exactamente: Equipo CIR
       const mensajeUsuario = `Aquí tienes los documentos de evaluación para auditar:\n${documentosTexto}\n\nRealiza la auditoría pedagógica completa. Genera los dos bloques (informe y carta) con los marcadores exactos.`;
 
       // Configuramos la URL y el Proxy
+           // Llamada directa al endpoint de Z.ai (soporta CORS nativamente)
       const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
-      const urlProxy = 'https://proxy.cors.sh/' + urlDestino;
 
-      const response = await fetch(urlProxy, {
+      const response = await fetch(urlDestino, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'x-cors-api-key': 'temp_' + Math.random().toString(36).substring(2) // Evita el error 403 del proxy
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
           model: 'glm-4-flash',
