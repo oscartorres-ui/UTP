@@ -898,35 +898,166 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
   }
 
   // ============================================================
-  // DESCARGA DE PDFs
+  // DESCARGA DE PDFs EN TAMAÑO CARTA
   // ============================================================
 
-  // Función auxiliar para inyectar CSS con los colores de la página web
+  // Medidas de papel carta: 215.9 x 279.4 mm.
+  // Se dejan 12 mm de margen por lado; el contenido mide 191.9 mm.
+  const PDF_CARTA = Object.freeze({
+    ancho: 215.9,
+    alto: 279.4,
+    margen: 12,
+    anchoContenido: 191.9
+  });
+
+  // CSS aplicado al contenido que html2pdf convertirá en PDF.
+  // Las reglas evitan cortes horizontales y reducen cortes poco naturales
+  // en títulos, párrafos, listas, tablas y la carta.
   function inyectarEstilosPDF(contenedor) {
     const style = document.createElement('style');
-    style.innerHTML = `
-      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.6; font-size: 12px; }
-      
-      /* Colores de la página */
-      h1, h2, h3, h4 { color: #6b21a8; margin-top: 20px; margin-bottom: 10px; page-break-after: avoid; }
-      p, li { margin-bottom: 10px; word-wrap: break-word; overflow-wrap: break-word; }
-      
-      /* Arreglo de tablas para que no se corten */
-      table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
-      th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; word-break: break-word; overflow-wrap: break-word; }
-      th { background-color: #f7fafc; color: #2d3748; font-weight: bold; }
-      
-      /* Estilo de la carta */
-      .carta-bloque { background: #f0fdff; border-left: 4px solid #00c4cc; padding: 20px; border-radius: 8px; white-space: pre-wrap; }
-      .separador-documentos { border-top: 3px dashed #c4b5fd; margin: 40px 0; page-break-before: always; }
+    style.setAttribute('data-pdf-styles', 'true');
+    style.textContent = `
+      @page {
+        size: Letter portrait;
+        margin: 12mm;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .pdf-document {
+        width: ${PDF_CARTA.anchoContenido}mm;
+        max-width: ${PDF_CARTA.anchoContenido}mm;
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        color: #1e293b;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 11pt;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        word-wrap: break-word;
+      }
+
+      .pdf-document h1,
+      .pdf-document h2,
+      .pdf-document h3,
+      .pdf-document h4 {
+        color: #6b21a8;
+        line-height: 1.2;
+        margin: 16px 0 8px;
+        page-break-after: avoid;
+        break-after: avoid-page;
+      }
+
+      .pdf-document h1:first-child,
+      .pdf-document h2:first-child,
+      .pdf-document h3:first-child {
+        margin-top: 0;
+      }
+
+      .pdf-document p,
+      .pdf-document li,
+      .pdf-document blockquote,
+      .pdf-document pre {
+        margin: 0 0 8px;
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
+
+      .pdf-document ul,
+      .pdf-document ol {
+        margin-top: 0;
+        padding-left: 20px;
+      }
+
+      .pdf-document table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 9pt;
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      .pdf-document thead {
+        display: table-header-group;
+      }
+
+      .pdf-document tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .pdf-document th,
+      .pdf-document td {
+        max-width: 0;
+        padding: 5px 6px;
+        border: 1px solid #cbd5e1;
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .pdf-document th {
+        background: #f7fafc;
+        color: #2d3748;
+        font-weight: 700;
+      }
+
+      .pdf-document img,
+      .pdf-document svg {
+        max-width: 100% !important;
+        height: auto !important;
+      }
+
+      .pdf-document .separador-documentos {
+        height: 0;
+        margin: 0;
+        border: 0;
+        page-break-before: always;
+        break-before: page;
+      }
+
+      .pdf-document .titulo-carta {
+        color: #6b21a8;
+        text-align: center;
+        font-size: 16pt;
+        margin: 0 0 16px;
+        page-break-after: avoid;
+      }
+
+      .pdf-document .carta-bloque {
+        width: 100%;
+        margin: 0;
+        padding: 14mm 12mm;
+        background: #f0fdff;
+        border-left: 4px solid #00c4cc;
+        border-radius: 4px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      .pdf-document .carta-bloque p {
+        white-space: pre-wrap;
+        margin-bottom: 10px;
+      }
     `;
     contenedor.appendChild(style);
   }
 
-  // Función para limpiar emojis que rompen el PDF
+  // Función para limpiar emojis que pueden fallar al rasterizarse en canvas.
   function limpiarEmojis(texto) {
-    return texto
+    return String(texto || '')
       .replace(/🟢/g, '[ALTA]')
       .replace(/🟡/g, '[MEDIA]')
       .replace(/🔴/g, '[BAJA]')
@@ -935,76 +1066,112 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       .replace(/📄/g, '');
   }
 
-  function descargarInformePDF() {
+  function crearContenedorPDF(html) {
+    const contenedor = document.createElement('div');
+    contenedor.className = 'pdf-document';
+    contenedor.innerHTML = html;
+
+    // Importante: se inyecta DESPUÉS de innerHTML para que el estilo no sea reemplazado.
+    inyectarEstilosPDF(contenedor);
+
+    // Debe estar fuera de la pantalla, pero no usar display:none, porque html2canvas
+    // necesita calcular sus dimensiones reales.
+    contenedor.style.position = 'absolute';
+    contenedor.style.left = '-100000px';
+    contenedor.style.top = '0';
+    document.body.appendChild(contenedor);
+    return contenedor;
+  }
+
+  function opcionesPDF(nombreArchivo) {
+    return {
+      margin: [PDF_CARTA.margen, PDF_CARTA.margen, PDF_CARTA.margen, PDF_CARTA.margen],
+      filename: nombreArchivo,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 794,
+        windowHeight: 1123
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: [PDF_CARTA.ancho, PDF_CARTA.alto],
+        orientation: 'portrait',
+        compress: true
+      },
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        avoid: ['h1', 'h2', 'h3', 'h4', 'p', 'li', 'tr', '.carta-bloque']
+      }
+    };
+  }
+
+  async function guardarPDF(contenedor, opciones) {
+    try {
+      await html2pdf().set(opciones).from(contenedor).save();
+    } finally {
+      contenedor.remove();
+    }
+  }
+
+  async function descargarInformePDF() {
     if (!reporteContenido || !reporteContenido.trim()) {
       mostrarError('No hay informe técnico disponible para descargar. Ejecuta primero la auditoría.');
       return;
     }
 
-    const contenedor = document.createElement('div');
-    contenedor.style.padding = '10px';
-    contenedor.style.width = '190mm'; // Ancho exacto A4 menos márgenes
-    contenedor.style.backgroundColor = '#ffffff';
-
-    inyectarEstilosPDF(contenedor);
-
-    // Limpiamos el texto de la IA para evitar errores gráficos
     const reporteLimpio = limpiarEmojis(reporteContenido);
     const cartaLimpia = limpiarEmojis(cartaContenido);
+    const htmlInforme = window.marked
+      ? marked.parse(reporteLimpio)
+      : '<pre>' + reporteLimpio.replace(/</g, '&lt;') + '</pre>';
 
-    let htmlInforme = window.marked ? marked.parse(reporteLimpio) : '<pre>' + reporteLimpio + '</pre>';
+    let htmlCompleto = htmlInforme;
+    if (cartaLimpia.trim()) {
+      const cartaHTML = window.marked
+        ? marked.parse(cartaLimpia)
+        : '<p>' + cartaLimpia.replace(/\n/g, '<br>').replace(/</g, '&lt;') + '</p>';
 
-    if (cartaLimpia && cartaLimpia.trim()) {
-      const cartaHTML = window.marked ? marked.parse(cartaLimpia) : '<pre>' + cartaLimpia + '</pre>';
-      
-      htmlInforme +=
+      htmlCompleto +=
         '<div class="separador-documentos"></div>' +
-        '<h1 style="text-align: center; font-size: 16px; margin-bottom: 20px;">CARTA DE RETROALIMENTACIÓN</h1>' +
+        '<h1 class="titulo-carta">CARTA DE RETROALIMENTACIÓN</h1>' +
         '<div class="carta-bloque">' + cartaHTML + '</div>';
     }
 
-    contenedor.innerHTML = htmlInforme;
-
-    const opciones = {
-      margin:       [15, 15, 15, 15],
-      filename:     generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'),
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1000 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['css', 'legacy'] }
-    };
-
-    html2pdf().set(opciones).from(contenedor).save();
+    const contenedor = crearContenedorPDF(htmlCompleto);
+    await guardarPDF(
+      contenedor,
+      opcionesPDF(generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'))
+    );
   }
 
-  function descargarCartaPDF() {
+  async function descargarCartaPDF() {
     if (!cartaContenido || !cartaContenido.trim()) {
       mostrarError('No hay carta de retroalimentación disponible para descargar. Ejecuta primero la auditoría.');
       return;
     }
 
-    const contenedor = document.createElement('div');
-    contenedor.style.padding = '10px';
-    contenedor.style.width = '190mm';
-    contenedor.style.backgroundColor = '#ffffff';
-    
-    inyectarEstilosPDF(contenedor);
-    
     const cartaLimpia = limpiarEmojis(cartaContenido);
-    const cartaHTML = window.marked ? marked.parse(cartaLimpia) : cartaLimpia.replace(/\n/g, '<br>');
-    
-    contenedor.innerHTML = `<div class="carta-bloque" style="min-height: 200px;">${cartaHTML}</div>`;
+    const cartaHTML = window.marked
+      ? marked.parse(cartaLimpia)
+      : '<p>' + cartaLimpia.replace(/\n/g, '<br>').replace(/</g, '&lt;') + '</p>';
 
-    const opciones = {
-      margin:       [15, 15, 15, 15],
-      filename:     generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'),
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 1000 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    const contenedor = crearContenedorPDF(
+      '<h1 class="titulo-carta">CARTA DE RETROALIMENTACIÓN</h1>' +
+      '<div class="carta-bloque">' + cartaHTML + '</div>'
+    );
 
-    html2pdf().set(opciones).from(contenedor).save();
+    await guardarPDF(
+      contenedor,
+      opcionesPDF(generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'))
+    );
   }
+
 </script>
 </body>
 </html>
