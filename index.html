@@ -258,7 +258,7 @@
   <div id="errorBox"></div>
   <div id="statusBox"></div>
 
-  <button class="btn-main" id="btnAnalizar" onclick="ejecutarAuditoria()">
+  <button class="btn-main" id="btnAnalizar">
     ✨ Auditar instrumentos pedagógicos
   </button>
 
@@ -295,21 +295,26 @@
 
   function logStatus(msg) {
     const statusBox = document.getElementById('statusBox');
-    statusBox.style.display = 'block';
-    statusBox.innerText += msg + '\n';
-    statusBox.scrollTop = statusBox.scrollHeight;
+    if (statusBox) {
+      statusBox.style.display = 'block';
+      statusBox.innerText += msg + '\n';
+      statusBox.scrollTop = statusBox.scrollHeight;
+    }
   }
 
   function mostrarError(msg) {
     const errorBox = document.getElementById('errorBox');
-    errorBox.innerText = '❌ ' + msg;
-    errorBox.style.display = 'block';
-    errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (errorBox) {
+      errorBox.innerText = '❌ ' + msg;
+      errorBox.style.display = 'block';
+      errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 
-  function ocultarError() { document.getElementById('errorBox').style.display = 'none'; }
-  function mostrarInfo(msg) { const infoBox = document.getElementById('infoBox'); infoBox.innerText = msg; infoBox.style.display = 'block'; }
-  function ocultarInfo() { document.getElementById('infoBox').style.display = 'none'; }
+  function ocultarError() { 
+    const eb = document.getElementById('errorBox');
+    if (eb) eb.style.display = 'none';
+  }
 
   function getFechaActual() {
     return new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -336,9 +341,9 @@
       reader.onload = () => {
         const res = reader.result;
         if (typeof res === 'string' && res.includes(',')) resolve(res.split(',')[1]);
-        else reject(new Error('Respuesta de lectura de archivo no válida.'));
+        else reject(new Error('Formato de archivo Base64 no válido.'));
       };
-      reader.onerror = (err) => reject(err || new Error('Error al leer el PDF.'));
+      reader.onerror = (err) => reject(err || new Error('Error al leer el archivo PDF.'));
       reader.readAsDataURL(file);
     });
   }
@@ -346,10 +351,10 @@
   function aplicarBadgesDeColor(texto) {
     if (!texto) return '';
     return texto
-      .replace(/[[ALTA]]/gi, '<span class="badge badge-alta">🟢 Alta Profundidad</span>')
-      .replace(/[[MEDIA]]/gi, '<span class="badge badge-media">🟡 Profundidad Intermedia</span>')
-      .replace(/[[BAJA]]/gi, '<span class="badge badge-baja">🔴 Baja Profundidad</span>')
-      .replace(/[[METACOGNICION]]/gi, '<span class="badge badge-meta">🧠 Metacognitivo</span>');
+      .replace(/\[\[ALTA\]\]/gi, '<span class="badge badge-alta">🟢 Alta Profundidad</span>')
+      .replace(/\[\[MEDIA\]\]/gi, '<span class="badge badge-media">🟡 Profundidad Intermedia</span>')
+      .replace(/\[\[BAJA\]\]/gi, '<span class="badge badge-baja">🔴 Baja Profundidad</span>')
+      .replace(/\[\[METACOGNICION\]\]/gi, '<span class="badge badge-meta">🧠 Metacognitivo</span>');
   }
 
   function convertirMarkdownAHTML(textoRaw) {
@@ -438,9 +443,8 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
   async function ejecutarAuditoria() {
     ocultarError();
-    ocultarInfo();
 
-    const apiKey = document.getElementById('apiKey').value.trim();
+    const apiKey = document.getElementById('apiKey')?.value.trim();
     const tablaFile = document.getElementById('tablaPdf')?.files?.[0];
     const pruebaFile = document.getElementById('pruebaPdf')?.files?.[0];
     const rubricaFile = document.getElementById('rubricaPdf')?.files?.[0];
@@ -449,29 +453,33 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
     const statusBox = document.getElementById('statusBox');
     const loaderText = document.getElementById('loaderText');
 
-    statusBox.style.display = 'none';
-    statusBox.innerText = '';
+    if (statusBox) {
+      statusBox.style.display = 'block';
+      statusBox.innerText = '🚀 Iniciando proceso de auditoría...\n';
+    }
+
     reporteContenidoRaw = '';
     cartaContenidoRaw = '';
 
     if (!apiKey) return mostrarError('Debes ingresar tu Clave API de Gemini.');
 
     const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
-    if (instrumentosCargados.length === 0) return mostrarError('Debes cargar al menos un instrumento.');
+    if (instrumentosCargados.length === 0) return mostrarError('Debes cargar al menos un archivo PDF.');
 
     const MAX_SIZE_MB = 20;
     for (const f of instrumentosCargados) {
       if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-        return mostrarError(`"${f.name}" supera el límite de ${MAX_SIZE_MB} MB. Comprime el PDF.`);
+        return mostrarError(`El archivo "${f.name}" supera el límite de ${MAX_SIZE_MB} MB. Comprime el PDF.`);
       }
     }
 
-    document.getElementById('btnAnalizar').disabled = true;
+    const btnAnalizar = document.getElementById('btnAnalizar');
+    if (btnAnalizar) btnAnalizar.disabled = true;
     document.getElementById('loader').style.display = 'block';
     document.getElementById('results').style.display = 'none';
 
     try {
-      logStatus('📄 Procesando archivos PDF...');
+      logStatus('📄 Codificando archivos PDF...');
       let tablaB64 = tablaFile ? await fileToBase64(tablaFile) : null;
       let pruebaB64 = pruebaFile ? await fileToBase64(pruebaFile) : null;
       let rubricaB64 = rubricaFile ? await fileToBase64(rubricaFile) : null;
@@ -483,13 +491,21 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
       const parts = [{ text: promptFinal + "\n\nRealiza la auditoría pedagógica completa sobre los instrumentos adjuntos. Genera los dos bloques (informe y carta) con los marcadores exactos." }];
       
-      if (tablaB64) parts.push({ inline_data: { mime_type: "application/pdf", data: tablaB64 } });
-      if (pruebaB64) parts.push({ inline_data: { mime_type: "application/pdf", data: pruebaB64 } });
-      if (rubricaB64) parts.push({ inline_data: { mime_type: "application/pdf", data: rubricaB64 } });
-      if (escalaB64) parts.push({ inline_data: { mime_type: "application/pdf", data: escalaB64 } });
+      // Estructura oficial camelCase para API REST v1beta
+      if (tablaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: tablaB64 } });
+      if (pruebaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: pruebaB64 } });
+      if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
+      if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
-      // SECUENCIA DE MODELOS OFICIALES GEMINI 3.5 A 3.8
-      const modelos = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
+      // Secuencia de fallback (3.5 a 3.8 + respaldo 2.5)
+      const modelos = [
+        'gemini-3.5-flash-lite',
+        'gemini-3.6-flash',
+        'gemini-3.7-flash',
+        'gemini-3.8-flash',
+        'gemini-2.5-flash'
+      ];
+      
       let data = null;
       let errorFatal = null;
 
@@ -497,12 +513,12 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
       for (const model of modelos) {
         if (errorFatal) break;
-        logStatus(`\n📡 Conectando modelo: ${model}...`);
-        const MAX_INTENTOS = 3;
+        logStatus(`📡 Conectando con modelo: ${model}...`);
+        const MAX_INTENTOS = 2;
 
         for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
           if (errorFatal) break;
-          loaderText.innerText = `Procesando auditoría con ${model}...`;
+          if (loaderText) loaderText.innerText = `Procesando auditoría con ${model}...`;
 
           try {
             const controller = new AbortController();
@@ -528,29 +544,28 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
             if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
               data = json;
-              logStatus(`✅ Análisis completado con ${model}`);
+              logStatus(`✅ Auditoría generada exitosamente con ${model}`);
               break;
             }
 
             const errDetail = json.error ? (json.error.message || JSON.stringify(json.error)) : ('HTTP ' + response.status);
 
             if (/API key/i.test(errDetail) || response.status === 401) {
-              errorFatal = 'API Key no válida. Verícala en Google AI Studio.';
+              errorFatal = 'API Key no válida o sin acceso. Verícala en Google AI Studio.';
               break;
             }
 
             if (response.status === 429) {
-              const delay = intento * 5000;
-              logStatus(`⏳ Rate limit (429) en ${model}. Esperando ${delay/1000}s...`);
-              if (intento < MAX_INTENTOS) await esperar(delay);
+              logStatus(`⏳ Límite de cuota (429) en ${model}. Reintentando...`);
+              if (intento < MAX_INTENTOS) await esperar(3000);
               continue;
             }
 
-            logStatus(`⚠️ Error en ${model} (${response.status}): ${errDetail}`);
-            if (intento < MAX_INTENTOS) await esperar(2000);
+            logStatus(`⚠️ ${model} respondió HTTP ${response.status}: ${errDetail}`);
+            break; // Cambia al siguiente modelo si es 404 o 400
 
           } catch (e) {
-            logStatus(`⚠️ Error en petición a ${model}: ${e.message}`);
+            logStatus(`⚠️ Error en conexión con ${model}: ${e.message}`);
             if (intento < MAX_INTENTOS) await esperar(2000);
           }
         }
@@ -559,10 +574,10 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
       }
 
       if (errorFatal) throw new Error(errorFatal);
-      if (!data) throw new Error('No fue posible obtener respuesta de Gemini API. Revisa el cuadro verde de estado.');
+      if (!data) throw new Error('No se pudo conectar con los modelos de Gemini. Revisa el cuadro de registro arriba para más detalles.');
 
       const textoResultado = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (!textoResultado) throw new Error('Respuesta vacía recibida desde la API.');
+      if (!textoResultado) throw new Error('La API respondió con contenido vacío.');
 
       const matchInforme = textoResultado.match(/===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i);
       const matchCarta = textoResultado.match(/===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i);
@@ -577,12 +592,12 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
       document.getElementById('reporteContenido').innerHTML = htmlFinal;
       document.getElementById('results').style.display = 'block';
-      logStatus('✅ Auditoría pedagógica generada correctamente.');
+      logStatus('🎉 Proceso completado con éxito.');
 
     } catch (err) {
       mostrarError('Error durante la ejecución: ' + err.message);
     } finally {
-      document.getElementById('btnAnalizar').disabled = false;
+      if (btnAnalizar) btnAnalizar.disabled = false;
       document.getElementById('loader').style.display = 'none';
     }
   }
@@ -619,4 +634,41 @@ PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre c
 
   async function descargarCartaPDF() {
     const el = document.getElementById('cartaSeccion');
-    if (!el || !cartaCont
+    if (!el || !cartaContenidoRaw.trim()) {
+      mostrarError('No hay carta de retroalimentación para descargar.');
+      return;
+    }
+
+    const btn = document.querySelector('.btn-download.letter');
+    const textoOriginal = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Generando PDF...'; }
+
+    const opciones = {
+      margin:       [10, 10, 10, 10],
+      filename:     generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opciones).from(el).save();
+    } catch (e) {
+      console.error('Error generando el documento PDF:', e);
+      mostrarError('Error al crear el archivo PDF: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+    }
+  }
+
+  // Escuchador del botón asignado al cargar el DOM
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnAnalizar');
+    if (btn) {
+      btn.addEventListener('click', ejecutarAuditoria);
+    }
+  });
+</script>
+</body>
+</html>
