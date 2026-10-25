@@ -8,12 +8,16 @@
   <!-- Renderizador de Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
+  <!-- Sanitizador HTML (previene XSS) -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  
   <!-- Generador de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root {
       --primary: #6b21a8;
+      --primary-light: #f3e8ff;
       --accent: #00c4cc;
       --bg: #f8fafc;
       --card-bg: #ffffff;
@@ -94,16 +98,18 @@
     .btn-download.letter { background: #0284c7; }
     .btn-download.letter:hover { background: #0369a1; }
     
-    /* ESTILOS DE RENDERIZADO VISIBLE EN PANTALLA */
+    /* ESTILOS DE RENDERIZADO WEB NATIVO Y DE IMPRESIÓN CON COLOR CONSERVADO */
     .printable-area {
       line-height: 1.6;
       color: #1e293b;
       font-size: 0.92rem;
       background: #ffffff;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     .printable-area h1, .printable-area h2, .printable-area h3 {
       color: #6b21a8;
-      margin-top: 20px;
+      margin-top: 22px;
       margin-bottom: 8px;
       page-break-after: avoid;
     }
@@ -113,6 +119,8 @@
     .printable-area p { margin-bottom: 10px; word-break: break-word; }
     .printable-area ul, .printable-area ol { margin-bottom: 12px; padding-left: 24px; }
     .printable-area li { margin-bottom: 4px; word-break: break-word; }
+    
+    /* TABLAS CON CABECERA COLORIDA */
     .printable-area table {
       width: 100%;
       border-collapse: collapse;
@@ -121,13 +129,36 @@
       table-layout: auto;
     }
     .printable-area tr { page-break-inside: avoid; }
-    .printable-area th, .printable-area td {
+    .printable-area tr:nth-child(even) { background-color: #f8fafc; }
+    .printable-area th {
+      background-color: #6b21a8 !important;
+      color: #ffffff !important;
+      font-weight: 700;
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #6b21a8;
+    }
+    .printable-area td {
       border: 1px solid #cbd5e1;
       padding: 8px 10px;
       text-align: left;
       word-break: break-word;
     }
-    .printable-area th { background-color: #f1f5f9; color: #1e293b; font-weight: 700; }
+
+    /* BADGES / INSIGNIAS CON COLOR */
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border-radius: 6px;
+      margin: 2px 0;
+      white-space: nowrap;
+    }
+    .badge-alta { background-color: #dcfce7 !important; color: #15803d !important; border: 1px solid #bbf7d0 !important; }
+    .badge-media { background-color: #fef9c3 !important; color: #a16207 !important; border: 1px solid #fef08a !important; }
+    .badge-baja { background-color: #fee2e2 !important; color: #b91c1c !important; border: 1px solid #fecaca !important; }
+    .badge-meta { background-color: #f3e8ff !important; color: #6b21a8 !important; border: 1px solid #e9d5ff !important; }
 
     .separador-documentos {
       margin: 35px 0 25px 0;
@@ -142,8 +173,8 @@
       background: #ffffff; padding: 0 15px; font-size: 0.8rem; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; white-space: nowrap;
     }
     .carta-bloque {
-      background: #f0fdff;
-      border-left: 4px solid var(--accent);
+      background: #f0fdff !important;
+      border-left: 5px solid var(--accent) !important;
       padding: 20px 24px;
       border-radius: 8px;
       line-height: 1.7;
@@ -260,6 +291,10 @@
     marked.setOptions({ breaks: true, gfm: true });
   }
 
+  // ============================================================
+  // UTILIDADES
+  // ============================================================
+
   function togglePasswordVisibility(id) {
     const input = document.getElementById(id);
     if (input) input.type = input.type === 'password' ? 'text' : 'password';
@@ -315,31 +350,46 @@
     });
   }
 
-  function limpiarEmojis(texto) {
+  // ============================================================
+  // RENDERIZADO DE MARKDOWN + BADGES
+  // ============================================================
+
+  function aplicarBadgesDeColor(texto) {
     if (!texto) return '';
     return texto
-      .replace(/🟢/g, '[ALTA]')
-      .replace(/🟡/g, '[MEDIA]')
-      .replace(/🔴/g, '[BAJA]')
-      .replace(/🧠/g, '[METACOGNICIÓN]')
-      .replace(/⚖️/g, '[SESGO]')
-      .replace(/📄/g, '');
+      .replace(/\[\[ALTA\]\]/gi, '<span class="badge badge-alta">🟢 Alta Profundidad</span>')
+      .replace(/\[\[MEDIA\]\]/gi, '<span class="badge badge-media">🟡 Profundidad Intermedia</span>')
+      .replace(/\[\[BAJA\]\]/gi, '<span class="badge badge-baja">🔴 Baja Profundidad</span>')
+      .replace(/\[\[METACOGNICION\]\]/gi, '<span class="badge badge-meta">🧠 Metacognitivo</span>');
   }
 
   function convertirMarkdownAHTML(textoRaw) {
     if (!textoRaw) return '';
-    const textoLimpio = limpiarEmojis(textoRaw);
+    
+    let htmlParsed = '';
     if (typeof marked !== 'undefined') {
-      return marked.parse(textoLimpio);
+      htmlParsed = marked.parse(textoRaw);
+    } else {
+      htmlParsed = textoRaw
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
     }
-    return textoLimpio
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
+
+    let result = aplicarBadgesDeColor(htmlParsed);
+    // Sanitizar para prevenir XSS
+    if (typeof DOMPurify !== 'undefined') {
+      result = DOMPurify.sanitize(result, { ADD_TAGS: ['span'], ADD_ATTR: ['class'] });
+    }
+    return result;
   }
+
+  // ============================================================
+  // PROMPT PARA LA IA
+  // ============================================================
 
   const SYSTEM_INSTRUCTIONS_BASE = `Eres un Asesor Pedagógico Experto en Evaluación Educativa, Aprendizaje Profundo y en el Marco para la Buena Enseñanza (MBE / Estándares de la Profesión Docente del MINEDUC de Chile). Tu función es auditar instrumentos de evaluación para la UTP del Colegio Isabel Riquelme y generar un informe de revisión técnica junto con una carta de retroalimentación formativa para el docente.
 
@@ -359,7 +409,13 @@ Debes generar DOS bloques independientes usando EXACTAMENTE estos marcadores:
 Atentamente,
 
 Equipo CIR
-===FIN_CARTA_RETROALIMENTACION===`;
+===FIN_CARTA_RETROALIMENTACION===
+
+PARA CLASIFICAR NIVELES DE PROFUNDIDAD, usa EXACTAMENTE estos marcadores entre corchetes dobles:
+- [[ALTA]] para alta profundidad
+- [[MEDIA]] para profundidad intermedia
+- [[BAJA]] para baja profundidad
+- [[METACOGNICION]] para ítems metacognitivos`;
 
   function construirPromptDinamico(instrumentos, fechaHoy) { 
     const { tabla, prueba, rubrica, escala } = instrumentos;
@@ -389,7 +445,7 @@ Equipo CIR
     let instruccionesItems = '';
     if (prueba) {
       instruccionesItems = `
-Para CADA ítem determina: OA, habilidad declarada, habilidad movilizada, contenido, demanda cognitiva, uso de evidencia, nivel de aprendizaje profundo, presencia de metacognición, problema detectado y recomendación. Clasifica cada ítem con semáforo: [ALTA], [MEDIA], [BAJA], [METACOGNICIÓN].`;
+Para CADA ítem determina: OA, habilidad declarada, habilidad movilizada, contenido, demanda cognitiva, uso de evidencia, nivel de aprendizaje profundo, presencia de metacognición, problema detectado y recomendación. Clasifica cada ítem usando EXACTAMENTE: [[ALTA]], [[MEDIA]], [[BAJA]] o [[METACOGNICION]].`;
     }
 
     const requisitosCarta = `
@@ -399,6 +455,10 @@ Firma DEBE ser exactamente: Equipo CIR`;
 
     return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + instruccionesItems + '\n' + requisitosCarta;
   }
+
+  // ============================================================
+  // EJECUCIÓN DE LA AUDITORÍA
+  // ============================================================
 
   async function ejecutarAuditoria() {
     ocultarError();
@@ -423,6 +483,14 @@ Firma DEBE ser exactamente: Equipo CIR`;
     const instrumentosCargados = [tablaFile, pruebaFile, rubricaFile, escalaFile].filter(Boolean);
     if (instrumentosCargados.length === 0) return mostrarError('Debes cargar al menos un instrumento.');
 
+    // Validación de tamaño de archivo (máx 20 MB cada uno)
+    const MAX_SIZE_MB = 20;
+    for (const f of instrumentosCargados) {
+      if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+        return mostrarError(`"${f.name}" supera el límite de ${MAX_SIZE_MB} MB. Comprime o divide el PDF.`);
+      }
+    }
+
     document.getElementById('btnAnalizar').disabled = true;
     document.getElementById('loader').style.display = 'block';
     document.getElementById('results').style.display = 'none';
@@ -443,7 +511,7 @@ Firma DEBE ser exactamente: Equipo CIR`;
       if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
       if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
-      // MODELOS DESDE 3.5 EN ADELANTE
+      // Orden de modelos: de básico a avanzado (fallback ascendente)
       const modelos = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
       let data = null;
       let errorFatal = null;
@@ -462,3 +530,191 @@ Firma DEBE ser exactamente: Equipo CIR`;
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+              signal: controller.signal,
+              body: JSON.stringify({
+                contents: [{ role: "user", parts }],
+                generationConfig: { temperature: 0.2, maxOutputTokens: 65536 }
+              })
+            });
+
+            clearTimeout(timeoutId);
+            const raw = await response.text();
+            let json = {};
+            try { json = JSON.parse(raw); } catch (_) { json = { error: { message: raw } }; }
+
+            if (response.ok && json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
+              data = json;
+              logStatus(`✅ Análisis completado con ${model}`);
+              break;
+            }
+
+            const errDetail = json.error ? json.error.message : 'HTTP ' + response.status;
+
+            // API Key inválida → no tiene sentido reintentar
+            if (/API key/i.test(errDetail) || response.status === 401) {
+              errorFatal = 'API Key no válida. Verícala en Google AI Studio.';
+              break;
+            }
+
+            // Rate limit → backoff exponencial
+            if (response.status === 429) {
+              const delay = intento * 5000;
+              logStatus(`⏳ Rate limit (429). Esperando ${delay/1000}s...`);
+              if (intento < MAX_INTENTOS) await esperar(delay);
+              continue;
+            }
+
+            logStatus(`⚠️ Reintentando (${intento}/${MAX_INTENTOS}): ${errDetail}`);
+            if (intento < MAX_INTENTOS) await esperar(2000);
+
+          } catch (e) {
+            logStatus(`⚠️ Error en petición: ${e.message}`);
+            if (intento < MAX_INTENTOS) await esperar(2000);
+          }
+        }
+
+        if (data) break;
+      }
+
+      if (errorFatal) throw new Error(errorFatal);
+      if (!data) throw new Error('No fue posible obtener respuesta de los modelos Gemini. Verifica tu API Key.');
+
+      const textoResultado = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!textoResultado) throw new Error('Respuesta vacía recibida desde la API.');
+
+      const matchInforme = textoResultado.match(/===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i);
+      const matchCarta = textoResultado.match(/===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i);
+
+      reporteContenidoRaw = matchInforme ? matchInforme[1].trim() : textoResultado;
+      cartaContenidoRaw = matchCarta ? matchCarta[1].trim() : '';
+
+      let htmlFinal = convertirMarkdownAHTML(reporteContenidoRaw);
+      if (cartaContenidoRaw) {
+        htmlFinal += '<hr class="separador-documentos"><div class="carta-bloque" id="seccionCartaDOM">' + convertirMarkdownAHTML(cartaContenidoRaw) + '</div>';
+      }
+
+      document.getElementById('reporteContenido').innerHTML = htmlFinal;
+      document.getElementById('results').style.display = 'block';
+      logStatus('✅ Auditoría pedagógica generada correctamente.');
+
+    } catch (err) {
+      mostrarError('Error durante la ejecución: ' + err.message);
+    } finally {
+      document.getElementById('btnAnalizar').disabled = false;
+      document.getElementById('loader').style.display = 'none';
+    }
+  }
+
+  // ============================================================
+  // GENERACIÓN DE PDF – TAMAÑO CARTA (215.9 x 279.4 mm) CON COLORES
+  // ============================================================
+
+  async function descargarInformePDF() {
+    if (!reporteContenidoRaw || !reporteContenidoRaw.trim()) {
+      mostrarError('No hay informe técnico generado para descargar.');
+      return;
+    }
+
+    const btn = document.querySelector('.btn-download.report');
+    const textoOriginal = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Preparando PDF...'; }
+
+    let htmlPDF = '<div class="printable-area">' + convertirMarkdownAHTML(reporteContenidoRaw);
+    if (cartaContenidoRaw && cartaContenidoRaw.trim()) {
+      htmlPDF += '<div class="separador-documentos"></div><h2 style="text-align:center; color:#6b21a8;">CARTA DE RETROALIMENTACIÓN</h2>' + '<div class="carta-bloque">' + convertirMarkdownAHTML(cartaContenidoRaw) + '</div>';
+    }
+    htmlPDF += '</div>';
+
+    await generarPDFDirecto(htmlPDF, generarNombreArchivoPDF('Informe_Auditoria_Pedagogica_UTP'), btn, textoOriginal);
+  }
+
+  async function descargarCartaPDF() {
+    if (!cartaContenidoRaw || !cartaContenidoRaw.trim()) {
+      mostrarError('No hay carta de retroalimentación para descargar.');
+      return;
+    }
+
+    const btn = document.querySelector('.btn-download.letter');
+    const textoOriginal = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Preparando PDF...'; }
+
+    const htmlPDF = '<div class="printable-area"><div class="carta-bloque">' + convertirMarkdownAHTML(cartaContenidoRaw) + '</div></div>';
+
+    await generarPDFDirecto(htmlPDF, generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'), btn, textoOriginal);
+  }
+
+  async function generarPDFDirecto(htmlContent, filename, btn, textoOriginalBtn) {
+    const originalScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    // Contenedor temporal a ancho de carta (215.9mm ≈ 816px a 96dpi)
+    const contenedorTemp = document.createElement('div');
+    contenedorTemp.style.position = 'absolute';
+    contenedorTemp.style.top = '0';
+    contenedorTemp.style.left = '0';
+    contenedorTemp.style.width = '794px'; // 215.9mm en px a 96dpi (carta)
+    contenedorTemp.style.padding = '24px';
+    contenedorTemp.style.background = '#ffffff';
+    contenedorTemp.style.zIndex = '999999';
+    // Forzar colores en el render del PDF
+    contenedorTemp.style.webkitPrintColorAdjust = 'exact';
+    contenedorTemp.style.printColorAdjust = 'exact';
+    contenedorTemp.innerHTML = htmlContent;
+
+    document.body.appendChild(contenedorTemp);
+
+    // Esperar a que se renderice
+    await new Promise(r => setTimeout(r, 400));
+
+    const opciones = {
+      margin:       [8, 8, 8, 8],
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  {
+        scale: 2,
+        useCORS: true,
+        scrollY: 0,
+        scrollX: 0,
+        windowWidth: 794,
+        width: 794,
+        logging: false,
+        // Forzar que html2canvas respete colores
+        onclone: (doc) => {
+          const style = doc.createElement('style');
+          style.textContent = `
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .printable-area th { background-color: #6b21a8 !important; color: #fff !important; }
+            .badge-alta { background-color: #dcfce7 !important; color: #15803d !important; }
+            .badge-media { background-color: #fef9c3 !important; color: #a16207 !important; }
+            .badge-baja { background-color: #fee2e2 !important; color: #b91c1c !important; }
+            .badge-meta { background-color: #f3e8ff !important; color: #6b21a8 !important; }
+            .carta-bloque { background: #f0fdff !important; border-left: 5px solid #00c4cc !important; }
+            tr:nth-child(even) { background-color: #f8fafc !important; }
+          `;
+          doc.head.appendChild(style);
+        }
+      },
+      jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opciones).from(contenedorTemp).save();
+    } catch (e) {
+      console.error('Error generando el documento PDF:', e);
+      mostrarError('Error al crear el archivo PDF: ' + e.message);
+    } finally {
+      if (document.body.contains(contenedorTemp)) {
+        document.body.removeChild(contenedorTemp);
+      }
+      window.scrollTo(0, originalScrollY);
+      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginalBtn; }
+    }
+  }
+</script>
+</body>
+</html>   
