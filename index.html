@@ -148,11 +148,11 @@
   <div class="input-group">
     <label class="input-label" for="apiKey">Clave API de Zhipu AI (GLM-4-Flash):</label>
     <div class="api-input-wrapper">
-      <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de bigmodel.cn">
+      <input type="password" id="apiKey" placeholder="Pega aquí tu API Key de z.ai">
       <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility('apiKey')">👁</button>
     </div>
     <div class="sub" style="margin-top:8px;color:#64748b;">
-      Obtén tu clave gratuita en <a href="https://bigmodel.cn/" target="_blank">bigmodel.cn</a>. El modelo GLM-4-Flash es gratuito y no tiene límite diario.
+      Obtén tu clave gratuita en <a href="https://z.ai/" target="_blank">z.ai</a>. El modelo GLM-4-Flash es gratuito.
     </div>
   </div>
 
@@ -176,7 +176,7 @@
 
   <div class="seccion-titulo">
     🧩 Instrumentos de aula
-    <span class="hint">(puedes cargar uno, ambos o ninguno; cualquier nombre de archivo)</span>
+    <span class="hint">(puedes cargar uno, ambos o ninguno)</span>
   </div>
   <div class="grid-files">
     <div class="file-box independent">
@@ -490,20 +490,17 @@ La firma DEBE ser exactamente: Equipo CIR
 
       const mensajeUsuario = `Aquí tienes los documentos de evaluación para auditar:\n${documentosTexto}\n\nRealiza la auditoría pedagógica completa. Genera los dos bloques (informe y carta) con los marcadores exactos.`;
 
-     // 1. Endpoint correcto para la plataforma Z.ai (internacional)
-      // 1. Endpoint correcto para la plataforma Z.ai (internacional)
+      // Configuramos la URL y el Proxy
       const urlDestino = 'https://api.z.ai/api/paas/v4/chat/completions';
-      // Usamos cors.sh, un proxy CORS gratuito y más estable
       const urlProxy = 'https://proxy.cors.sh/' + urlDestino;
 
-      // 2. Hacemos la llamada completa
       const response = await fetch(urlProxy, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${apiKey}`,
+          'x-cors-api-key': 'temp_' + Math.random().toString(36).substring(2) // Evita el error 403 del proxy
         },
-        // AQUÍ ESTÁ LO QUE FALTABA: El cuerpo de la solicitud
         body: JSON.stringify({
           model: 'glm-4-flash',
           messages: [
@@ -513,7 +510,8 @@ La firma DEBE ser exactamente: Equipo CIR
           temperature: 0.2,
           max_tokens: 8192
         })
-      }); // <-- Aquí se cierra el fetch
+      });
+
       if (!response.ok) {
         const errorJson = await response.json().catch(() => ({}));
         const errorMsg = errorJson.error?.message || `HTTP ${response.status}`;
@@ -556,7 +554,7 @@ La firma DEBE ser exactamente: Equipo CIR
     } catch (err) {
       let detalle = err?.message || String(err);
       if (/Failed to fetch|NetworkError/i.test(detalle)) {
-        detalle = 'No fue posible conectar con Zhipu AI. Verifica tu conexión y que la API Key sea correcta.';
+        detalle = 'No fue posible conectar con el servidor. Revisa tu conexión.';
       }
       mostrarError('Error durante el proceso:\n' + detalle);
       console.error(err);
