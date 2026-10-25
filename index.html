@@ -127,19 +127,19 @@
 
   <div class="grid-config">
     <div class="input-group">
-      <label class="input-label" for="apiKey">Clave API de Zhipu AI:</label>
+      <label class="input-label" for="apiKey">Clave API de Z.ai:</label>
       <div class="api-input-wrapper">
-        <input type="password" id="apiKey" placeholder="Pega aquí tu API Key">
+        <input type="password" id="apiKey" placeholder="Pega tu API Key de z.ai">
         <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility('apiKey')">👁</button>
       </div>
     </div>
 
     <div class="input-group">
-      <label class="input-label" for="apiServer">Servidor / Portal:</label>
+      <label class="input-label" for="apiServer">Servidor:</label>
       <div class="api-input-wrapper">
         <select id="apiServer">
-          <option value="https://open.bigmodel.cn/api/paas/v4/chat/completions" selected>BigModel (cn)</option>
-          <option value="https://api.z.ai/api/paas/v4/chat/completions">Z.ai (Global)</option>
+          <option value="https://api.z.ai/api/paas/v4/chat/completions" selected>Z.ai (Global)</option>
+          <option value="https://open.bigmodel.cn/api/paas/v4/chat/completions">BigModel (cn)</option>
         </select>
       </div>
     </div>
@@ -148,10 +148,8 @@
       <label class="input-label" for="apiModel">Modelo IA:</label>
       <div class="api-input-wrapper">
         <select id="apiModel">
-          <option value="glm-4-flash" selected>glm-4-flash (Gratis)</option>
-          <option value="glm-4-flashx">glm-4-flashx (Gratis)</option>
-          <option value="glm-4-air">glm-4-air</option>
-          <option value="glm-4">glm-4 (De Pago)</option>
+          <option value="glm-4.7-flash" selected>glm-4.7-flash (Gratis)</option>
+          <option value="glm-4.5-flash">glm-4.5-flash (Gratis)</option>
         </select>
       </div>
     </div>
@@ -248,16 +246,6 @@
     document.getElementById('errorBox').style.display = 'none';
   }
 
-  function mostrarInfo(msg) {
-    const infoBox = document.getElementById('infoBox');
-    infoBox.innerText = msg;
-    infoBox.style.display = 'block';
-  }
-
-  function ocultarInfo() {
-    document.getElementById('infoBox').style.display = 'none';
-  }
-
   function getFechaActual() {
     const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
     return new Date().toLocaleDateString('es-CL', opciones);
@@ -297,13 +285,6 @@ REGLAS INSTITUCIONALES OBLIGATORIAS:
 1. LÍMITE DE OBJETIVOS DE APRENDIZAJE: MÁXIMO 3 OA.
 2. REQUISITO DE HABILIDADES: OBLIGATORIAMENTE 3 habilidades declaradas y evaluadas.
 
-============================================================
-MARCO NORMATIVO CHILENO DE REFERENCIA
-============================================================
-1. MARCO PARA LA BUENA ENSEÑANZA (MBE): Evalúa coherencia con Dominios A, B, C y D.
-2. DECRETO 67/2018: Verifica principios de evaluación para el aprendizaje (formativa, diversificada, retroalimentación descriptiva, metacognición).
-3. ELIMINACIÓN DEL SESGO DE GÉNERO: Busca lenguaje sexista, estereotipos, representación desequilibrada y sugiere reformulaciones inclusivas.
-
 INSTRUCCIONES DE FORMATO OBLIGATORIO:
 Debes generar DOS bloques independientes usando EXACTAMENTE estos marcadores:
 
@@ -329,54 +310,26 @@ Equipo CIR
 
     const contexto = `FECHA ACTUAL: ${fechaHoy}\nUsa esta fecha en la CARTA.\n\nINSTRUMENTOS RECIBIDOS:\n` + recibidos.join('\n');
 
-    let estructura = 'ESTRUCTURA DEL INFORME:\n';
-    let sec = 1;
-    estructura += `${sec++}. Identificación de los instrumentos recibidos\n`;
-    estructura += `${sec++}. Síntesis ejecutiva\n`;
-    if (tabla) estructura += `${sec++}. Análisis de la Tabla de Especificaciones\n`;
-    if (prueba) {
-      estructura += `${sec++}. Auditoría ítem por ítem de la Evaluación Escrita\n`;
-      estructura += `${sec++}. Análisis de aprendizaje profundo\n`;
-      estructura += `${sec++}. Preguntas de interpretación, comparación y justificación\n`;
-      estructura += `${sec++}. Preguntas superficiales y reformulación\n`;
-      estructura += `${sec++}. Auditoría de metacognición\n`;
-      estructura += `${sec++}. Distribución de habilidades cognitivas\n`;
-    }
-    if (tabla && prueba) estructura += `${sec++}. Coherencia OA – Habilidades – Ítems\n`;
-    if (rubrica) estructura += `${sec++}. AUDITORÍA DE LA RÚBRICA\n`;
-    if (escala) estructura += `${sec++}. AUDITORÍA DE LA ESCALA DE APRECIACIÓN\n`;
-    estructura += `${sec++}. ANÁLISIS DE COHERENCIA CON EL MBE\n`;
-    estructura += `${sec++}. ANÁLISIS DE COHERENCIA CON EL DECRETO 67/2018\n`;
-    estructura += `${sec++}. ANÁLISIS DE SESGO DE GÉNERO Y LENGUAJE INCLUSIVO\n`;
-    estructura += `${sec++}. RECOMENDACIONES INTEGRADAS\n`;
-    estructura += `${sec++}. Fortalezas generales\n`;
-    estructura += `${sec++}. Aspectos críticos generales\n`;
-    estructura += `${sec++}. Recomendaciones UTP\n`;
-    estructura += `${sec++}. Conclusión técnica\n`;
+    let estructura = 'ESTRUCTURA DEL INFORME:\n1. Identificación\n2. Síntesis ejecutiva\n';
+    if (tabla) estructura += '3. Análisis Tabla Especificaciones\n';
+    if (prueba) estructura += '4. Auditoría Evaluación Escrita\n';
+    if (rubrica) estructura += '5. Auditoría Rúbrica\n';
+    if (escala) estructura += '6. Auditoría Escala Apreciación\n';
+    estructura += '7. Coherencia MBE y Decreto 67\n8. Recomendaciones\n';
 
-    const requisitosCarta = `
-REQUISITOS DE LA CARTA:
-La carta debe incluir la fecha exacta proporcionada: ${fechaHoy}.
-Debe ser profesional, respetuosa, formativa, concreta y orientada a la mejora.
-Debe reconocer fortalezas y señalar oportunidades de mejora en aprendizaje profundo, MBE, Decreto 67 y sesgo de género.
-
-La firma DEBE ser exactamente: Equipo CIR
-`;
-
-    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura + '\n' + requisitosCarta;
+    return SYSTEM_INSTRUCTIONS_BASE + '\n\n' + contexto + '\n\n' + estructura;
   }
 
-    async function llamarApiZhipu(proxyUrl, targetServerUrl, apiKey, modelSelected, promptFinal, mensajeUsuario) {
+  async function llamarApiZhipu(proxyUrl, targetServerUrl, apiKey, modelSelected, promptFinal, mensajeUsuario) {
     const urlFinal = `${proxyUrl}?url=${encodeURIComponent(targetServerUrl)}`;
     return await fetch(urlFinal, {
       method: 'POST',
-      mode: 'cors',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'glm-4.7-flash', // Forzamos el modelo correcto aquí
+        model: modelSelected,
         messages: [
           { role: 'system', content: promptFinal },
           { role: 'user', content: mensajeUsuario }
@@ -389,11 +342,10 @@ La firma DEBE ser exactamente: Equipo CIR
 
   async function ejecutarAuditoria() {
     ocultarError();
-    ocultarInfo();
 
     const apiKey = document.getElementById('apiKey').value.trim();
-    let selectedServer = document.getElementById('apiServer').value;
-    let selectedModel = document.getElementById('apiModel').value;
+    const selectedServer = document.getElementById('apiServer').value;
+    const selectedModel = document.getElementById('apiModel').value;
 
     const tablaFile = document.getElementById('tablaPdf')?.files?.[0];
     const pruebaFile = document.getElementById('pruebaPdf')?.files?.[0];
@@ -409,7 +361,7 @@ La firma DEBE ser exactamente: Equipo CIR
     cartaContenido = '';
 
     if (!apiKey) {
-      mostrarError('Debes ingresar tu Clave API de Zhipu AI.');
+      mostrarError('Debes ingresar tu Clave API de Z.ai.');
       return;
     }
 
@@ -430,34 +382,23 @@ La firma DEBE ser exactamente: Equipo CIR
       let tablaTexto = '', pruebaTexto = '', rubricaTexto = '', escalaTexto = '';
 
       if (tablaFile) {
-        logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Tabla...`);
-        loaderText.innerText = 'Leyendo Tabla...';
-        tablaTexto = await extraerTextoDePDF(tablaFile);
-        paso++;
+        logStatus(`[${paso}/${totalPasos}] Leyendo Tabla...`);
+        tablaTexto = await extraerTextoDePDF(tablaFile); paso++;
       }
-
       if (pruebaFile) {
-        logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Evaluación...`);
-        loaderText.innerText = 'Leyendo Evaluación...';
-        pruebaTexto = await extraerTextoDePDF(pruebaFile);
-        paso++;
+        logStatus(`[${paso}/${totalPasos}] Leyendo Evaluación...`);
+        pruebaTexto = await extraerTextoDePDF(pruebaFile); paso++;
       }
-
       if (rubricaFile) {
-        logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Rúbrica...`);
-        loaderText.innerText = 'Leyendo Rúbrica...';
-        rubricaTexto = await extraerTextoDePDF(rubricaFile);
-        paso++;
+        logStatus(`[${paso}/${totalPasos}] Leyendo Rúbrica...`);
+        rubricaTexto = await extraerTextoDePDF(rubricaFile); paso++;
       }
-
       if (escalaFile) {
-        logStatus(`[${paso}/${totalPasos}] Extrayendo texto de la Escala...`);
-        loaderText.innerText = 'Leyendo Escala...';
-        escalaTexto = await extraerTextoDePDF(escalaFile);
-        paso++;
+        logStatus(`[${paso}/${totalPasos}] Leyendo Escala...`);
+        escalaTexto = await extraerTextoDePDF(escalaFile); paso++;
       }
 
-      logStatus(`[${totalPasos}/${totalPasos}] Consultando IA (${selectedModel})...`);
+      logStatus(`[${totalPasos}/${totalPasos}] Conectando con Z.ai (${selectedModel})...`);
       loaderText.innerText = 'Consultando IA...';
 
       const fechaHoy = getFechaActual();
@@ -471,50 +412,40 @@ La firma DEBE ser exactamente: Equipo CIR
       if (rubricaTexto) documentosTexto += `\n\n=== RÚBRICA ===\n${rubricaTexto}`;
       if (escalaTexto) documentosTexto += `\n\n=== ESCALA ===\n${escalaTexto}`;
 
-      const mensajeUsuario = `Documentos:\n${documentosTexto}\n\nGenera los dos bloques (informe y carta) con los marcadores exactos.`;
+      const mensajeUsuario = `Documentos:\n${documentosTexto}\n\nGenera los dos bloques (informe y carta).`;
       const PROXY_URL = 'https://broken-paper-13b3proxy-utp.oscar-torres-4fc.workers.dev';
 
-      // Primer intento con la configuración seleccionada
-      let response = await llamarApiZhipu(PROXY_URL, selectedServer, apiKey, selectedModel, promptFinal, mensajeUsuario);
+      // Lista de modelos Flash gratuitos de Z.ai
+      const modelosZaIFlash = [selectedModel, 'glm-4.7-flash', 'glm-4.5-flash'];
+      const modelosUnicos = [...new Set(modelosZaIFlash)];
 
-      // Si falla por 400 (Modelo o Servidor no reconocido) o 429 (Sin saldo), probar conmutación de servidor/modelo gratuito
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        logStatus(`⚠️ La petición inicial falló (${response.status}): ${errJson.error?.message || 'Error de autenticación'}`);
+      let response = null;
+      let exito = false;
+      let modOk = '';
 
-        // Alternar servidor (BigModel cn <-> Z.ai Global)
-        const altServer = selectedServer.includes('open.bigmodel.cn') 
-          ? 'https://api.z.ai/api/paas/v4/chat/completions' 
-          : 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+      for (const mod of modelosUnicos) {
+        logStatus(`🔄 Probando con modelo '${mod}'...`);
+        response = await llamarApiZhipu(PROXY_URL, selectedServer, apiKey, mod, promptFinal, mensajeUsuario);
 
-        const modelosGratis = ['glm-4-flash', 'glm-4-flashx'];
-
-        let exito = false;
-        for (const serverTry of [selectedServer, altServer]) {
-          for (const modelTry of modelosGratis) {
-            logStatus(`🔄 Intentando en servidor ${serverTry.includes('bigmodel') ? 'BigModel (cn)' : 'Z.ai (Global)'} con modelo '${modelTry}'...`);
-            response = await llamarApiZhipu(PROXY_URL, serverTry, apiKey, modelTry, promptFinal, mensajeUsuario);
-            if (response.ok) {
-              exito = true;
-              document.getElementById('apiServer').value = serverTry;
-              document.getElementById('apiModel').value = modelTry;
-              break;
-            }
-          }
-          if (exito) break;
-        }
-
-        if (!exito) {
-          throw new Error(errJson.error?.message || `Error HTTP ${response.status}. Revisa que tu API Key sea válida en open.bigmodel.cn o z.ai.`);
+        if (response.ok) {
+          exito = true;
+          modOk = mod;
+          break;
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          logStatus(`⚠️ '${mod}' rechazado: HTTP ${response.status} (${errData.error?.message || 'Error'})`);
         }
       }
 
+      if (!exito) {
+        throw new Error("No se pudo procesar con tu API Key. Revisa que la clave esté activa en https://z.ai/manage-apikey/apikey-list.");
+      }
+
+      document.getElementById('apiModel').value = modOk;
       const json = await response.json();
       const textoResultado = json.choices?.[0]?.message?.content?.trim();
 
-      if (!textoResultado) {
-        throw new Error('La IA respondió sin contenido de texto.');
-      }
+      if (!textoResultado) throw new Error('La IA respondió sin contenido.');
 
       const regexInforme = /===INFORME_TECNICO===([\s\S]*?)===FIN_INFORME_TECNICO===/i;
       const regexCarta = /===CARTA_RETROALIMENTACION===([\s\S]*?)===FIN_CARTA_RETROALIMENTACION===/i;
@@ -525,24 +456,19 @@ La firma DEBE ser exactamente: Equipo CIR
       reporteContenido = matchInforme ? matchInforme[1].trim() : textoResultado;
       cartaContenido = matchCarta ? matchCarta[1].trim() : '';
 
-      if (cartaContenido && !/Equipo CIR\s*$/i.test(cartaContenido)) {
-        cartaContenido = cartaContenido.replace(/\s*$/, '') + '\n\nAtentamente,\n\nEquipo CIR';
-      }
-
       let htmlCompleto = window.marked ? marked.parse(reporteContenido) : '<pre>' + reporteContenido + '</pre>';
 
-      if (cartaContenido && cartaContenido.trim()) {
+      if (cartaContenido) {
         const cartaHTML = window.marked ? marked.parse(cartaContenido) : '<pre>' + cartaContenido + '</pre>';
-        htmlCompleto += '<hr class="separador-documentos">' + '<div class="carta-bloque">' + cartaHTML + '</div>';
+        htmlCompleto += '<hr class="separador-documentos"><div class="carta-bloque">' + cartaHTML + '</div>';
       }
 
       document.getElementById('reporteContenido').innerHTML = htmlCompleto;
       document.getElementById('results').style.display = 'block';
-      logStatus('✅ Auditoría completada con éxito.');
+      logStatus(`✅ Auditoría completada con éxito usando '${modOk}'.`);
 
     } catch (err) {
-      mostrarError('Error: ' + (err?.message || String(err)));
-      console.error(err);
+      mostrarError(err?.message || String(err));
     } finally {
       document.getElementById('btnAnalizar').disabled = false;
       document.getElementById('loader').style.display = 'none';
@@ -552,37 +478,27 @@ La firma DEBE ser exactamente: Equipo CIR
   function inyectarEstilosPDF(contenedor) {
     const style = document.createElement('style');
     style.innerHTML = `
-      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      * { box-sizing: border-box; }
       body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.6; font-size: 12px; }
-      h1, h2, h3, h4 { color: #6b21a8; margin-top: 20px; margin-bottom: 10px; page-break-after: avoid; }
-      p, li { margin-bottom: 10px; word-wrap: break-word; overflow-wrap: break-word; }
-      table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
-      th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; word-break: break-word; overflow-wrap: break-word; }
-      th { background-color: #f7fafc; color: #2d3748; font-weight: bold; }
+      h1, h2, h3 { color: #6b21a8; margin-top: 20px; }
+      table { width: 100% !important; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
+      th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+      th { background-color: #f7fafc; }
       .carta-bloque { background: #f0fdff; border-left: 4px solid #00c4cc; padding: 20px; border-radius: 8px; }
       .separador-documentos { border-top: 3px dashed #c4b5fd; margin: 40px 0; page-break-before: always; }
     `;
     contenedor.appendChild(style);
   }
 
-  function limpiarEmojis(texto) {
-    return texto.replace(/🟢/g, '[ALTA]').replace(/🟡/g, '[MEDIA]').replace(/🔴/g, '[BAJA]').replace(/🧠/g, '[METACOGNICIÓN]').replace(/⚖️/g, '[SESGO]').replace(/📄/g, '');
-  }
-
   function descargarInformePDF() {
-    if (!reporteContenido || !reporteContenido.trim()) return mostrarError('No hay informe disponible.');
-
+    if (!reporteContenido) return mostrarError('No hay informe disponible.');
     const contenedor = document.createElement('div');
     contenedor.style.padding = '10px'; contenedor.style.width = '190mm'; contenedor.style.backgroundColor = '#ffffff';
 
-    const reporteLimpio = limpiarEmojis(reporteContenido);
-    const cartaLimpia = limpiarEmojis(cartaContenido);
-
-    let htmlInforme = window.marked ? marked.parse(reporteLimpio) : '<pre>' + reporteLimpio + '</pre>';
-
-    if (cartaLimpia && cartaLimpia.trim()) {
-      const cartaHTML = window.marked ? marked.parse(cartaLimpia) : '<pre>' + cartaLimpia + '</pre>';
-      htmlInforme += '<div class="separador-documentos"></div>' + '<h1 style="text-align: center; font-size: 16px; margin-bottom: 20px;">CARTA DE RETROALIMENTACIÓN</h1>' + '<div class="carta-bloque">' + cartaHTML + '</div>';
+    let htmlInforme = window.marked ? marked.parse(reporteContenido) : '<pre>' + reporteContenido + '</pre>';
+    if (cartaContenido) {
+      const cartaHTML = window.marked ? marked.parse(cartaContenido) : '<pre>' + cartaContenido + '</pre>';
+      htmlInforme += '<div class="separador-documentos"></div><div class="carta-bloque">' + cartaHTML + '</div>';
     }
 
     contenedor.innerHTML = htmlInforme;
@@ -590,27 +506,22 @@ La firma DEBE ser exactamente: Equipo CIR
 
     html2pdf().set({
       margin: [15, 15, 15, 15], filename: 'Informe_Auditoria_Pedagogica_UTP.pdf',
-      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 1000 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] }
+      html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).from(contenedor).save();
   }
 
   function descargarCartaPDF() {
-    if (!cartaContenido || !cartaContenido.trim()) return mostrarError('No hay carta disponible.');
-
+    if (!cartaContenido) return mostrarError('No hay carta disponible.');
     const contenedor = document.createElement('div');
     contenedor.style.padding = '10px'; contenedor.style.width = '190mm'; contenedor.style.backgroundColor = '#ffffff';
 
-    const cartaLimpia = limpiarEmojis(cartaContenido);
-    const cartaHTML = window.marked ? marked.parse(cartaLimpia) : cartaLimpia.replace(/\n/g, '<br>');
-
-    contenedor.innerHTML = `<div class="carta-bloque" style="min-height: 200px;">${cartaHTML}</div>`;
+    const cartaHTML = window.marked ? marked.parse(cartaContenido) : cartaContenido;
+    contenedor.innerHTML = `<div class="carta-bloque">${cartaHTML}</div>`;
     inyectarEstilosPDF(contenedor);
 
     html2pdf().set({
-      margin: [15, 15, 15, 15], filename: 'Carta_Retroalimentacion_Formativa_Equipo_CIR.pdf',
-      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, windowWidth: 1000 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      margin: [15, 15, 15, 15], filename: 'Carta_Retroalimentacion_Equipo_CIR.pdf',
+      html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).from(contenedor).save();
   }
 </script>
