@@ -649,7 +649,7 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       if (rubricaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: rubricaB64 } });
       if (escalaB64) parts.push({ inlineData: { mimeType: "application/pdf", data: escalaB64 } });
 
-      const modelos = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
+      const modelos = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
       let data = null;
       let erroresAcumulados = [];
       let errorFatal = null; // Para errores no reintentables
