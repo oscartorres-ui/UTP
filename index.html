@@ -104,7 +104,8 @@
     .btn-download.drive { background: #f59e0b; color: #111827; }
     .btn-download.drive:hover { background: #d97706; }
     .drive-help { width: 100%; margin: -8px 0 0; color: #64748b; font-size: 0.78rem; text-align: right; }
-    
+    .btn-download.word { background: #2b579a; }
+.btn-download.word:hover { background: #1e395b; }
     #reporteContenido { line-height: 1.6; color: #1e293b; }
     #reporteContenido h1, #reporteContenido h2, #reporteContenido h3 { color: #6b21a8; margin-top: 20px; }
     #reporteContenido table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.85rem; }
@@ -232,6 +233,12 @@
 
   <div id="results">
     <div class="action-bar">
+      <button class="btn-download word" onclick="descargarInformeWord()">
+  📝 Descargar Informe + Carta Word
+</button>
+<button class="btn-download word" onclick="descargarCartaWord()">
+  📝 Descargar Solo Carta Word
+</button>
       <button class="btn-download report" onclick="descargarInformePDF()">
         📥 Descargar Informe + Carta PDF
       </button>
@@ -1479,7 +1486,48 @@ Nunca uses: "Asesor Pedagógico", "Asesoría Pedagógica", "Asesoría Pedagógic
       opcionesPDF(generarNombreArchivoPDF('Carta_Retroalimentacion_Formativa_Equipo_CIR'))
     );
   }
+// ============================================================
+// DESCARGA EN FORMATO WORD (.doc)
+// ============================================================
+function descargarWord(htmlContenido, nombreArchivo) {
+  const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+                 "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+                 "xmlns='http://www.w3.org/TR/REC-html40'>" +
+                 "<head><meta charset='utf-8'><style>body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #cbd5e1; padding: 8px; }</style></head><body>";
+  const footer = "</body></html>";
+  const htmlCompleto = header + htmlContenido + footer;
 
+  const blob = new Blob(['\ufeff', htmlCompleto], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function descargarInformeWord() {
+  const contenedor = document.getElementById('reporteContenido');
+  if (!contenedor || !contenedor.innerHTML.trim()) {
+    mostrarError('No hay informe generado para descargar.');
+    return;
+  }
+  const nombre = generarNombreArchivoPDF('Informe_y_Carta_Auditoria').replace('.pdf', '.doc');
+  descargarWord(contenedor.innerHTML, nombre);
+}
+
+function descargarCartaWord() {
+  const cartaEl = document.querySelector('.carta-bloque');
+  if (!cartaEl) {
+    mostrarError('No hay carta generada para descargar.');
+    return;
+  }
+  const htmlCarta = `<h2>CARTA DE RETROALIMENTACIÓN</h2><div style="white-space: pre-wrap;">${cartaEl.innerHTML}</div>`;
+  const nombre = generarNombreArchivoPDF('Carta_Retroalimentacion').replace('.pdf', '.doc');
+  descargarWord(htmlCarta, nombre);
+}
 </script>
 </body>
 </html>
